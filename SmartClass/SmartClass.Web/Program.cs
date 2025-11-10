@@ -18,6 +18,8 @@ namespace SmartClass.Web
             builder.Services.AddRazorComponents().AddInteractiveServerComponents();
             
             builder.Services.AddHttpContextAccessor();
+
+            //Services
             builder.Services.AddScoped<ICurrentUser, CurrentUser>();
             builder.Services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));
 
