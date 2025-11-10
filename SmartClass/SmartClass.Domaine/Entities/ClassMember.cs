@@ -1,5 +1,4 @@
-﻿// !!! Зверни увагу на namespace: SmartClass.Domain.Primitives (без "Domaine")
-using SmartClass.Domain.Enums;
+﻿using SmartClass.Domain.Enums;
 using SmartClass.Domaine.Primitives;
 
 namespace SmartClass.Domain.Entities
