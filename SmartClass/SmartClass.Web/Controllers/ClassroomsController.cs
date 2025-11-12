@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SmartClass.Application.Features.Classrooms.Commands.Create;
 using SmartClass.Application.Features.Classrooms.Commands.Join;
+using SmartClass.Application.Features.Classrooms.Queries.GetMyClassrooms;
 
 namespace SmartClass.Web.Controllers;
 
@@ -28,5 +29,12 @@ public sealed class ClassroomsController : ControllerBase
     {
         var classroomId = await mediator.Send(command, ct);
         return Ok(new { classroomId });
+    }
+
+    [HttpGet("mine")]
+    public async Task<IActionResult> GetMine(CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetMyClassroomsQuery(), ct);
+        return Ok(result);
     }
 }
