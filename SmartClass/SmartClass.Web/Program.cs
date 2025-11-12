@@ -16,7 +16,7 @@ namespace SmartClass.Web
             builder.Services.AddApplication();
             builder.Services.AddInfrastructure(builder.Configuration);
             builder.Services.AddRazorComponents().AddInteractiveServerComponents();
-            
+
             builder.Services.AddHttpContextAccessor();
 
             //Services

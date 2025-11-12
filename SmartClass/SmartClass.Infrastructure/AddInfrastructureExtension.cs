@@ -1,15 +1,17 @@
-﻿using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using SmartClass.Application.Abstractions;
+using SmartClass.Application.Abstractions.Storage;
+using SmartClass.Infrastructure.Files;
 using SmartClass.Infrastructure.Identity.Entities;
 using SmartClass.Infrastructure.Identity.Services;
 using SmartClass.Infrastructure.Options;
 using SmartClass.Infrastructure.Persistence;
+using System.Text;
 
 namespace SmartClass.Infrastructure;
 
@@ -19,6 +21,7 @@ public static class AddInfrastructureExtension
     {
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+        services.AddScoped<IFileStorage, LocalFileStorage>();
 
         services.AddIdentityCore<ApplicationUser>(options =>
         {
