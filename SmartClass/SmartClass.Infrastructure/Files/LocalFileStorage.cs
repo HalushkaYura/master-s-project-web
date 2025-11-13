@@ -1,49 +1,48 @@
 ﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Options;
 using SmartClass.Application.Abstractions.Storage;
+using SmartClass.Application.Options;
 
 namespace SmartClass.Infrastructure.Files;
 
 public sealed class LocalFileStorage : IFileStorage
 {
     private readonly string webRoot;
+    private readonly FileStorageOptions options;
 
-    public LocalFileStorage(IWebHostEnvironment env)
+    public LocalFileStorage(IWebHostEnvironment env, IOptions<FileStorageOptions> opts)
     {
-        webRoot = env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-        Directory.CreateDirectory(webRoot);
+        this.options = opts.Value;
+        webRoot = env.WebRootPath!;
+        Directory.CreateDirectory(Path.Combine(webRoot, options.BasePath));
     }
 
-    public async Task<string> SaveAsync(Stream content, string relativePath, CancellationToken ct = default)
+    public async Task<string> SaveAsync(Stream content, string relative, CancellationToken ct)
     {
-        var fullPath = Path.Combine(webRoot, Normalize(relativePath));
-        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        var nextPath = Path.Combine(options.BasePath, relative);
+        var full = Path.Combine(webRoot, nextPath);
 
-        using var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+
+        using var fs = new FileStream(full, FileMode.Create, FileAccess.Write);
         await content.CopyToAsync(fs, ct);
-        return Normalize(relativePath).Replace('\\', '/'); // BlobPath як /uploads/...
+
+        return "/" + nextPath.Replace("\\", "/");
     }
 
-    public Task DeleteAsync(string relativePath, CancellationToken ct = default)
+    public Task DeleteAsync(string relative, CancellationToken ct)
     {
-        var fullPath = Path.Combine(webRoot, Normalize(relativePath));
-        if (File.Exists(fullPath)) File.Delete(fullPath);
+        var full = Path.Combine(webRoot, relative.TrimStart('/').Replace("/", "\\"));
+        if (File.Exists(full)) File.Delete(full);
         return Task.CompletedTask;
     }
 
-    public Task<Stream> OpenReadAsync(string relativePath, CancellationToken ct = default)
+    public Task<Stream> OpenReadAsync(string relative, CancellationToken ct)
     {
-        var fullPath = Path.Combine(webRoot, Normalize(relativePath));
-        if (!File.Exists(fullPath))
-            throw new FileNotFoundException("File not found", fullPath);
+        var full = Path.Combine(webRoot, relative.TrimStart('/').Replace("/", "\\"));
+        if (!File.Exists(full)) throw new FileNotFoundException();
 
-        Stream s = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        Stream s = new FileStream(full, FileMode.Open, FileAccess.Read);
         return Task.FromResult(s);
-    }
-
-    private static string Normalize(string path)
-    {
-        path = path.Replace('/', Path.DirectorySeparatorChar);
-        if (path.StartsWith(Path.DirectorySeparatorChar)) path = path[1..];
-        return path;
     }
 }

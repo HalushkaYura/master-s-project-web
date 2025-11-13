@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using SmartClass.Application.Abstractions;
 using SmartClass.Application.Abstractions.Storage;
+using SmartClass.Application.Options;
 using SmartClass.Infrastructure.Files;
 using SmartClass.Infrastructure.Identity.Entities;
 using SmartClass.Infrastructure.Identity.Services;
@@ -19,6 +20,12 @@ public static class AddInfrastructureExtension
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        services.Configure<FileStorageOptions>(configuration.GetSection("FileStorage"));
+        var fsOptions = configuration.GetSection("FileStorage").Get<FileStorageOptions>();
+        if (fsOptions.Provider == "Local")
+        {
+            services.AddScoped<IFileStorage, LocalFileStorage>();
+        }
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
         services.AddScoped<IFileStorage, LocalFileStorage>();
