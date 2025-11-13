@@ -10,6 +10,7 @@ using SmartClass.Application.Options;
 using SmartClass.Infrastructure.Files;
 using SmartClass.Infrastructure.Identity.Entities;
 using SmartClass.Infrastructure.Identity.Services;
+using SmartClass.Infrastructure.Notifications;
 using SmartClass.Infrastructure.Options;
 using SmartClass.Infrastructure.Persistence;
 using System.Text;
@@ -29,6 +30,8 @@ public static class AddInfrastructureExtension
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
         services.AddScoped<IFileStorage, LocalFileStorage>();
+        
+        services.AddScoped<INotificationService, NotificationService>();
 
         services.AddIdentityCore<ApplicationUser>(options =>
         {

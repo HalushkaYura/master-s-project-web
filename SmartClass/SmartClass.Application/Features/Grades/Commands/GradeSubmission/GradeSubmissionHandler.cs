@@ -1,5 +1,7 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Components.Forms;
 using SmartClass.Application.Abstractions;
+using SmartClass.Application.Common.DomainEvents;
 using SmartClass.Domain.Entities;
 
 namespace SmartClass.Application.Features.Grades.Commands.GradeSubmission;
@@ -11,19 +13,21 @@ public sealed class GradeSubmissionHandler : IRequestHandler<GradeSubmissionComm
     private readonly IRepository<Classroom> classroomRepo;
     private readonly IRepository<Grade> gradeRepo;
     private readonly ICurrentUser currentUser;
-
+    private readonly IMediator mediator;
     public GradeSubmissionHandler(
         IRepository<Submission> submissionRepo,
         IRepository<Assignment> assignmentRepo,
         IRepository<Classroom> classroomRepo,
         IRepository<Grade> gradeRepo,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IMediator mediator)
     {
         this.submissionRepo = submissionRepo;
         this.assignmentRepo = assignmentRepo;
         this.classroomRepo = classroomRepo;
         this.gradeRepo = gradeRepo;
         this.currentUser = currentUser;
+        this.mediator = mediator;
     }
 
     public async Task<Guid> Handle(GradeSubmissionCommand request, CancellationToken ct)
@@ -73,6 +77,13 @@ public sealed class GradeSubmissionHandler : IRequestHandler<GradeSubmissionComm
         }
 
         await gradeRepo.SaveChangesAsync();
+        await mediator.Publish(new GradeGivenEvent(
+                        assignmentId: assignment.Id,
+                        submissionId: submission.Id,
+                        studentId: submission.StudentId,
+                        gradedBy: teacherId,
+                        score: request.Score
+                    ), ct);
         return grade.Id;
     }
 }
