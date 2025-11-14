@@ -1,0 +1,26 @@
+﻿@page "/not-found"
+@layout MainLayout
+@inject NavigationManager Navigation
+@using Radzen
+@using SmartClass.Web.Components.Layout
+
+<PageTitle>Page Not Found</PageTitle>
+
+<div class="container text-center mt-5 bg-gradient" >
+    <RadzenCard Style="max-width: 600px; margin: auto; padding: 20px; " >
+        <div class="text-center">
+            <h1 class="display-4">Oops! Page Not Found</h1>
+            <p class="lead">Sorry, the page you are looking for does not exist. It might have been moved or deleted.</p>
+            <RadzenImage Path="/notFound.png" Style="max-width: 50%; height: auto; margin: 20px 0;" />
+            <div>
+                <p>If you think this is a mistake, please contact support or try the following:</p>
+                <ul class="list-unstyled">
+                    <li>Check the URL for errors</li>
+                    <li>Use the navigation menu to find what you are looking for</li>
+                    <li>Return to the homepage using the button below</li>
+                </ul>
+            </div>
+            <RadzenButton Text="Return to Homepage" Click="@(() => Navigation.NavigateTo("/"))" Style="margin-top: 20px;" Class="rz-button rz-primary rz-button-lg" />
+        </div>
+    </RadzenCard>
+</div>

@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using SmartClass.Application.Abstractions;
+using SmartClass.Application.Features.Classrooms.Create;
 using SmartClass.Application.Features.Classrooms.Specifications;
 using SmartClass.Domain.Entities;
 

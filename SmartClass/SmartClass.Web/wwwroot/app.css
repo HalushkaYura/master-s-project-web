@@ -49,3 +49,63 @@ h1:focus {
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
 }
+.profile-container {
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.avatar-lg {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+}
+.dashboard-header {
+    margin-top: 20px;
+}
+
+.class-card {
+    transition: all .2s ease;
+}
+
+    .class-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 18px rgba(0,0,0,0.1);
+    }
+.profile-container {
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.avatar-lg {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.create-card {
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 30px;
+    border-radius: 12px;
+}
+
+    .create-card label {
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+.dashboard-header {
+    margin-top: 20px;
+}
+
+.class-card {
+    transition: all .2s ease;
+    border-radius: 12px;
+}
+
+    .class-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+    }

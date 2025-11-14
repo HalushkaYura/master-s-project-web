@@ -1,0 +1,54 @@
+﻿@page "/invite/{ProjectId:int}/{InviteToken}"
+@using System.Security.Claims
+@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject HttpClient HttpClient
+@using Microsoft.AspNetCore.Components.Authorization
+@using Radzen.Blazor
+
+<RadzenContent Container="true" Style="containerStyle">
+    <RadzenHeading Size="H3">Invite</RadzenHeading>
+    <div class="mt-3">
+        <p>Запрошення до проекту.</p>
+    </div>
+    <div class="mt-3">
+        <RadzenButton Click="@InviteTo" Text="Прийняти" ButtonStyle="ButtonStyle.Success" Style="buttonStyle" />
+        <RadzenButton Click="@Cancel" Text="Скасувати" ButtonStyle="ButtonStyle.Danger" Style="buttonStyle" />
+    </div>
+</RadzenContent>
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+    [Parameter] public string InviteToken { get; set; }
+
+    private async Task InviteTo()
+    {
+        /*var project = await HttpClient.GetFromJsonAsync<ProjectInfoDTO>($"api/project/info/{ProjectId}");
+        if (project.InviteToken == InviteToken)
+        {
+            var response = await HttpClient.PostAsync($"api/project/add-member/{ProjectId}", null);
+            if (response.IsSuccessStatusCode)
+            {
+                NavigationManager.NavigateTo($"/project/{ProjectId}");
+            }
+            else
+            {
+                // Обробка помилок
+            }
+        }
+        else
+        {
+            // Обробка некоректного запрошення
+        }*/
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
+    private async Task<string> GetUserIdAsync()
+    {
+        return  await HttpClient.GetStringAsync("api/auth/UserIdAuthenticated");
+    }
+}

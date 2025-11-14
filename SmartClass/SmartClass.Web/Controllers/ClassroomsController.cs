@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SmartClass.Application.Features.Classrooms.Commands.Create;
 using SmartClass.Application.Features.Classrooms.Commands.Join;
+using SmartClass.Application.Features.Classrooms.Create;
 using SmartClass.Application.Features.Classrooms.Queries.GetMyClassrooms;
 
 namespace SmartClass.Web.Controllers;

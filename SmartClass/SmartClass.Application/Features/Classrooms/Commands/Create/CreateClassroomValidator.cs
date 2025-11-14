@@ -1,4 +1,5 @@
 ﻿using FluentValidation;
+using SmartClass.Application.Features.Classrooms.Create;
 
 namespace SmartClass.Application.Features.Classrooms.Commands.Create;
 

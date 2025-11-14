@@ -1,67 +1,69 @@
+using Radzen;
 using SmartClass.Application;
 using SmartClass.Application.Abstractions;
 using SmartClass.Infrastructure;
 using SmartClass.Infrastructure.Data.Repositories;
 using SmartClass.Web.Components;
 using SmartClass.Web.Services;
+
 namespace SmartClass.Web
 {
     public class Program
     {
         public static void Main(string[] args)
         {
-
             var builder = WebApplication.CreateBuilder(args);
 
+            // Application + Infrastructure
             builder.Services.AddApplication();
             builder.Services.AddInfrastructure(builder.Configuration);
-            builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+
+            builder.Services.AddRazorComponents()
+                .AddInteractiveServerComponents();
 
             builder.Services.AddHttpContextAccessor();
 
-            //Services
-            builder.Services.AddScoped<ICurrentUser, CurrentUser>();
-            builder.Services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));
-
-            // Swagger
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen(options =>
+            // ----------  GLOBAL HTTPCLIENT  ----------
+            builder.Services.AddScoped(sp =>
             {
-                options.SwaggerDoc("v1", new() { Title = "SmartClass API", Version = "v1" });
+                var httpContext = sp.GetRequiredService<IHttpContextAccessor>().HttpContext
+                                   ?? throw new InvalidOperationException("No HttpContext");
 
-                // JWT Bearer у Swagger
-                options.AddSecurityDefinition("Bearer", new()
-                {
-                    Name = "Authorization",
-                    Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
-                    Scheme = "bearer",
-                    BearerFormat = "JWT",
-                    In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-                    Description = "¬веди токен €к: Bearer {your JWT}"
-                });
+                var request = httpContext.Request;
+                var baseUri = $"{request.Scheme}://{request.Host}";
 
-                options.AddSecurityRequirement(new()
+                return new HttpClient
                 {
-                        {
-                            new() {
-                                Reference = new() {
-                                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                                    Id = "Bearer"
-                                }
-                            },
-                            Array.Empty<string>()
-                        }
-                });
+                    BaseAddress = new Uri(baseUri)
+                };
             });
 
-            // Controllers
+            // ----------  AUTH API CLIENT ----------
+            builder.Services.AddScoped<AuthApiClient>();
+
+            // ----------  LOCAL STORAGE ----------
+            builder.Services.AddScoped<LocalStorage>();
+
+            // ----------  CURRENT USER ----------
+            builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+
+            // ----------  GENERAL REPOSITORY ----------
+            builder.Services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));
+
+            // ----------  RADZEN ----------
+            builder.Services.AddRadzenComponents();
+
+            // ---------- API + SWAGGER ----------
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+
+            // API Controllers
             builder.Services.AddControllers();
 
             var app = builder.Build();
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
-
             app.UseRouting();
 
             app.UseAuthentication();
@@ -71,12 +73,14 @@ namespace SmartClass.Web
             app.UseSwagger();
             app.UseSwaggerUI();
 
+            // Map API
             app.MapControllers();
 
-            app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+            // Map Blazor
+            app.MapRazorComponents<App>()
+               .AddInteractiveServerRenderMode();
 
             app.Run();
-
         }
     }
 }
