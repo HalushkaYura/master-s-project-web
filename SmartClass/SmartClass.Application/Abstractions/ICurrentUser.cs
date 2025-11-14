@@ -1,5 +1,5 @@
 ﻿namespace SmartClass.Application.Abstractions;
-public interface ICurrentUserService
+public interface ICurrentUser
 {
     bool IsAuthenticated { get; }
     Guid? UserId { get; }

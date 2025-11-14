@@ -4,7 +4,7 @@ using System.Security.Claims;
 
 namespace SmartClass.Web.Services;
 
-public class CurrentUser : ICurrentUserService
+public class CurrentUser : ICurrentUser
 {
     private readonly IHttpContextAccessor httpContextAccessor;
     public CurrentUser(IHttpContextAccessor httpContextAccessor) => this.httpContextAccessor = httpContextAccessor;

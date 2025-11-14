@@ -2,32 +2,19 @@
 using SmartClass.Application.Abstractions;
 using SmartClass.Application.Features.Classrooms.Specifications;
 using SmartClass.Domain.Entities;
-using SmartClass.Domain.Enums; // для ClassRole, ChannelType
 
 namespace SmartClass.Application.Features.Classrooms.Commands.Create;
 
 public sealed class CreateClassroomHandler : IRequestHandler<CreateClassroomCommand, Guid>
 {
-    private readonly IRepository<Classroom> classroomRepository;
-    private readonly IRepository<ClassMember> classMemberRepository;
-    private readonly IRepository<Channel> channelRepository;
-    private readonly IRepository<ChannelMember> channelMemberRepository;
-    private readonly ICurrentUserService currentUser;
-
+    private readonly IRepository<Classroom> repository;
+    private readonly ICurrentUser currentUser;
     private static readonly char[] alphabet =
         "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".ToCharArray(); // без 0 O 1 I
 
-    public CreateClassroomHandler(
-        IRepository<Classroom> classroomRepository,
-        IRepository<ClassMember> classMemberRepository,
-        IRepository<Channel> channelRepository,
-        IRepository<ChannelMember> channelMemberRepository,
-        ICurrentUserService currentUser)
+    public CreateClassroomHandler(IRepository<Classroom> repository, ICurrentUser currentUser)
     {
-        this.classroomRepository = classroomRepository;
-        this.classMemberRepository = classMemberRepository;
-        this.channelRepository = channelRepository;
-        this.channelMemberRepository = channelMemberRepository;
+        this.repository = repository;
         this.currentUser = currentUser;
     }
 
@@ -38,10 +25,8 @@ public sealed class CreateClassroomHandler : IRequestHandler<CreateClassroomComm
 
         var joinCode = await GenerateUniqueJoinCodeAsync(ct);
 
-        // 1) Створюємо Classroom
-        var classroom = new Classroom
+        var entity = new Classroom
         {
-            Id = Guid.NewGuid(),
             OwnerId = ownerId,
             Title = request.Title,
             Section = request.Section,
@@ -49,52 +34,19 @@ public sealed class CreateClassroomHandler : IRequestHandler<CreateClassroomComm
             JoinCode = joinCode,
             IsArchived = false
         };
-        await classroomRepository.AddAsync(classroom);
 
-        // 2) Додаємо власника як учасника класу
-        var ownerMember = new ClassMember
-        {
-            Id = Guid.NewGuid(),
-            ClassroomId = classroom.Id,
-            UserId = ownerId,
-            RoleInClass = ClassRole.Teacher
-        };
-        await classMemberRepository.AddAsync(ownerMember);
-
-        // 3) Створюємо канал "General" для класу
-        var generalChannel = new Channel
-        {
-            Id = Guid.NewGuid(),
-            ClassroomId = classroom.Id,
-            Title = "General",
-            Type = ChannelType.Classroom // або свій варіант з enum
-        };
-        await channelRepository.AddAsync(generalChannel);
-
-        // 4) Додаємо вчителя до каналу "General"
-        var generalChannelMember = new ChannelMember
-        {
-            Id = Guid.NewGuid(),
-            ChannelId = generalChannel.Id,
-            UserId = ownerId,
-            IsMuted = false
-        };
-        await channelMemberRepository.AddAsync(generalChannelMember);
-
-        // 5) Одна транзакція на всі зміни
-        await classroomRepository.SaveChangesAsync();
-
-        return classroom.Id;
+        await repository.AddAsync(entity);
+        await repository.SaveChangesAsync();
+        return entity.Id;
     }
 
     private async Task<string> GenerateUniqueJoinCodeAsync(CancellationToken ct)
     {
+        // 6 символів достатньо; за потреби зроби 7–8
         while (true)
         {
             var code = RandomCode(6);
-            var exists = await classroomRepository
-                .GetFirstBySpecAsync(new ClassroomByJoinCodeSpec(code)) != null;
-
+            var exists = await repository.GetFirstBySpecAsync(new ClassroomByJoinCodeSpec(code)) != null;
             if (!exists) return code;
         }
     }

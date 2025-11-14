@@ -10,13 +10,13 @@ public sealed class UploadSubmissionFilesHandler
 {
     private readonly IRepository<Submission> submissionRepo;
     private readonly IRepository<FileResource> fileRepo;
-    private readonly ICurrentUserService currentUser;
+    private readonly ICurrentUser currentUser;
     private readonly IFileStorage storage;
 
     public UploadSubmissionFilesHandler(
         IRepository<Submission> submissionRepo,
         IRepository<FileResource> fileRepo,
-        ICurrentUserService currentUser,
+        ICurrentUser currentUser,
         IFileStorage storage)
     {
         this.submissionRepo = submissionRepo;

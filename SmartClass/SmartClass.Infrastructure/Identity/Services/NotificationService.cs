@@ -1,5 +1,4 @@
 ﻿using SmartClass.Application.Abstractions;
-using SmartClass.Application.Contracts.Notifications;
 using SmartClass.Domain.Entities;
 using SmartClass.Infrastructure.Persistence;
 using System.Text.Json;
@@ -9,13 +8,8 @@ namespace SmartClass.Infrastructure.Notifications;
 public sealed class NotificationService : INotificationService
 {
     private readonly AppDbContext db;
-    private readonly INotificationRealtimeSender realtimeSender;
 
-    public NotificationService(AppDbContext db, INotificationRealtimeSender realtimeSender)
-    {
-        this.db = db;
-        this.realtimeSender = realtimeSender;
-    }
+    public NotificationService(AppDbContext db) => this.db = db;
 
     public async Task CreateAsync(Guid userId, string type, string payloadJson, CancellationToken ct = default)
     {
@@ -28,20 +22,9 @@ public sealed class NotificationService : INotificationService
             IsRead = false,
             CreatedAt = DateTime.UtcNow
         };
-
         await db.Notifications.AddAsync(entity, ct);
         await db.SaveChangesAsync(ct);
-
-        // DTO для пуша
-        var dto = new NotificationDto
-        {
-            Id = entity.Id,
-            Type = entity.Type,
-            PayloadJson = entity.PayloadJson,
-            IsRead = entity.IsRead,
-            CreatedAt = entity.CreatedAt
-        };
-
-        await realtimeSender.SendToUserAsync(userId, dto, ct);
     }
+
+    // (пізніше можемо додати fan-out у SignalR тут)
 }

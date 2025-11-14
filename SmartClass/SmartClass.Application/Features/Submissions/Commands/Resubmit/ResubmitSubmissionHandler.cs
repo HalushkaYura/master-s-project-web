@@ -12,14 +12,14 @@ public sealed class ResubmitSubmissionHandler : IRequestHandler<ResubmitSubmissi
     private readonly IRepository<Assignment> assignmentRepo;
     private readonly IRepository<FileResource> fileRepo;
     private readonly IFileStorage storage;
-    private readonly ICurrentUserService currentUser;
+    private readonly ICurrentUser currentUser;
 
     public ResubmitSubmissionHandler(
         IRepository<Submission> submissionRepo,
         IRepository<Assignment> assignmentRepo,
         IRepository<FileResource> fileRepo,
         IFileStorage storage,
-        ICurrentUserService currentUser)
+        ICurrentUser currentUser)
     {
         this.submissionRepo = submissionRepo;
         this.assignmentRepo = assignmentRepo;

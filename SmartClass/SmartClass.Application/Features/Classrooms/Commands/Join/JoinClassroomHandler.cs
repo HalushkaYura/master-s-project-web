@@ -10,12 +10,12 @@ public sealed class JoinClassroomHandler : IRequestHandler<JoinClassroomCommand,
 {
     private readonly IRepository<Classroom> classroomRepository;
     private readonly IRepository<ClassMember> memberRepository;
-    private readonly ICurrentUserService currentUser;
+    private readonly ICurrentUser currentUser;
 
     public JoinClassroomHandler(
         IRepository<Classroom> classroomRepository,
         IRepository<ClassMember> memberRepository,
-        ICurrentUserService currentUser)
+        ICurrentUser currentUser)
     {
         this.classroomRepository = classroomRepository;
         this.memberRepository = memberRepository;

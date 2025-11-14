@@ -14,20 +14,16 @@ public sealed class GradeGivenHandler : INotificationHandler<GradeGivenEvent>
         this.notificationService = notificationService;
     }
 
-    public async Task Handle(GradeGivenEvent e, CancellationToken ct)
+    public async Task Handle(GradeGivenEvent notification, CancellationToken ct)
     {
         var payload = JsonSerializer.Serialize(new
         {
-            assignmentId = e.AssignmentId,
-            submissionId = e.SubmissionId,
-            score = e.Score
+            type = "GradeGiven",
+            assignmentId = notification.AssignmentId,
+            submissionId = notification.SubmissionId,
+            score = notification.Score
         });
 
-        await notificationService.CreateAsync(
-            userId: e.StudentId,
-            type: "GradeGiven",
-            payloadJson: payload,
-            ct
-        );
+        await notificationService.CreateAsync(notification.StudentId, "GradeGiven", payload, ct);
     }
 }

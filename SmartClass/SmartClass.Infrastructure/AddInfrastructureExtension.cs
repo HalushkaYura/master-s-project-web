@@ -30,7 +30,7 @@ public static class AddInfrastructureExtension
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
         services.AddScoped<IFileStorage, LocalFileStorage>();
-
+        
         services.AddScoped<INotificationService, NotificationService>();
 
         services.AddIdentityCore<ApplicationUser>(options =>
@@ -46,7 +46,25 @@ public static class AddInfrastructureExtension
         var jwt = configuration.GetSection("Jwt").Get<JwtOptions>()!;
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key));
 
-
+        services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidIssuer = jwt.Issuer,
+                ValidAudience = jwt.Audience,
+                IssuerSigningKey = key,
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ClockSkew = TimeSpan.FromMinutes(1)
+            };
+        });
 
         services.AddAuthorization();
 

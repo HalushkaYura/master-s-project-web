@@ -6,6 +6,6 @@ using System.Threading.Tasks;
 
 namespace SmartClass.Domain.Enums
 {
-    public enum ChannelType { Classroom = 1, Group = 2, Direct = 3, Assignment = 4 }
+    public enum ChannelType { Class = 1, Group = 2, Direct = 3, Assignment = 4 }
 
 }
