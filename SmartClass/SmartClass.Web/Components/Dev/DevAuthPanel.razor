@@ -1,0 +1,30 @@
+﻿@using SmartClass.Web.Services
+@inject DevJwtState JwtState
+
+<div class="border p-2 mb-3 rounded bg-light">
+    <label class="form-label">Dev JWT token</label>
+    <textarea class="form-control" rows="2" @bind="token"></textarea>
+    <button class="btn btn-sm btn-primary mt-2" @onclick="Apply">Apply</button>
+
+    @if (!string.IsNullOrWhiteSpace(JwtState.Token))
+    {
+        <div class="mt-2 text-success small">Token is set.</div>
+    }
+</div>
+
+@code {
+    private string? token;
+
+    private void Apply()
+    {
+        var trimmed = token?.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+            return;
+
+        // можна вставляти "Bearer xxxxx" або просто "xxxxx"
+        if (trimmed.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            trimmed = trimmed.Substring("Bearer ".Length).Trim();
+
+        JwtState.SetToken(trimmed);
+    }
+}

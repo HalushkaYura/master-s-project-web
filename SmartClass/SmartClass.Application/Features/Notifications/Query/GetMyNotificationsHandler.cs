@@ -9,9 +9,9 @@ public sealed class GetMyNotificationsHandler
     : IRequestHandler<GetMyNotificationsQuery, IReadOnlyList<NotificationDto>>
 {
     private readonly IRepository<Notification> repo;
-    private readonly ICurrentUser currentUser;
+    private readonly ICurrentUserService currentUser;
 
-    public GetMyNotificationsHandler(IRepository<Notification> repo, ICurrentUser currentUser)
+    public GetMyNotificationsHandler(IRepository<Notification> repo, ICurrentUserService currentUser)
     {
         this.repo = repo;
         this.currentUser = currentUser;

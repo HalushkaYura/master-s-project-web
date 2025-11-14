@@ -7,9 +7,9 @@ namespace SmartClass.Application.Features.Notifications.Commands;
 public sealed class MarkNotificationReadHandler : IRequestHandler<MarkNotificationReadCommand>
 {
     private readonly IRepository<Notification> repo;
-    private readonly ICurrentUser currentUser;
+    private readonly ICurrentUserService currentUser;
 
-    public MarkNotificationReadHandler(IRepository<Notification> repo, ICurrentUser currentUser)
+    public MarkNotificationReadHandler(IRepository<Notification> repo, ICurrentUserService currentUser)
     {
         this.repo = repo;
         this.currentUser = currentUser;

@@ -1,7 +1,14 @@
 ﻿@inherits LayoutComponentBase
 
+
+
+<header>
+    <NotificationsClient />
+</header>
 <div class="page">
     <div class="sidebar">
+        <NavLink href="/classrooms" class="nav-link" Match="NavLinkMatch.All">Мої класи</NavLink>
+
         <NavMenu />
     </div>
 
@@ -9,7 +16,7 @@
         <div class="top-row px-4">
             <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
         </div>
-
+          <Dev.DevAuthPanel />
         <article class="content px-4">
             @Body
         </article>

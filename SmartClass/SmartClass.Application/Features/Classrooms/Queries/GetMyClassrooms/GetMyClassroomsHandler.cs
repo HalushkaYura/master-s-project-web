@@ -11,12 +11,12 @@ public sealed class GetMyClassroomsHandler
 {
     private readonly IRepository<Classroom> classroomRepository;
     private readonly IRepository<ClassMember> memberRepository;
-    private readonly ICurrentUser currentUser;
+    private readonly ICurrentUserService currentUser;
 
     public GetMyClassroomsHandler(
         IRepository<Classroom> classroomRepository,
         IRepository<ClassMember> memberRepository,
-        ICurrentUser currentUser)
+        ICurrentUserService currentUser)
     {
         this.classroomRepository = classroomRepository;
         this.memberRepository = memberRepository;

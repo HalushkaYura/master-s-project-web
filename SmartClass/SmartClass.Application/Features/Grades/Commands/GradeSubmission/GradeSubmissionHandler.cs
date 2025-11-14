@@ -12,14 +12,14 @@ public sealed class GradeSubmissionHandler : IRequestHandler<GradeSubmissionComm
     private readonly IRepository<Assignment> assignmentRepo;
     private readonly IRepository<Classroom> classroomRepo;
     private readonly IRepository<Grade> gradeRepo;
-    private readonly ICurrentUser currentUser;
+    private readonly ICurrentUserService currentUser;
     private readonly IMediator mediator;
     public GradeSubmissionHandler(
         IRepository<Submission> submissionRepo,
         IRepository<Assignment> assignmentRepo,
         IRepository<Classroom> classroomRepo,
         IRepository<Grade> gradeRepo,
-        ICurrentUser currentUser,
+        ICurrentUserService currentUser,
         IMediator mediator)
     {
         this.submissionRepo = submissionRepo;

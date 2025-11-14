@@ -12,14 +12,14 @@ public sealed class GetSubmissionsByAssignmentHandler
     private readonly IRepository<Assignment> assignmentRepo;
     private readonly IRepository<Classroom> classroomRepo;
     private readonly IRepository<Grade> gradeRepo;
-    private readonly ICurrentUser currentUser;
+    private readonly ICurrentUserService currentUser;
 
     public GetSubmissionsByAssignmentHandler(
         IRepository<Submission> submissionRepo,
         IRepository<Assignment> assignmentRepo,
         IRepository<Classroom> classroomRepo,
         IRepository<Grade> gradeRepo,
-        ICurrentUser currentUser)
+        ICurrentUserService currentUser)
     {
         this.submissionRepo = submissionRepo;
         this.assignmentRepo = assignmentRepo;

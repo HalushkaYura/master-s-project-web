@@ -9,12 +9,12 @@ public sealed class SubmitAssignmentHandler : IRequestHandler<SubmitAssignmentCo
 {
     private readonly IRepository<Submission> submissionRepo;
     private readonly IRepository<Assignment> assignmentRepo;
-    private readonly ICurrentUser currentUser;
+    private readonly ICurrentUserService currentUser;
 
     public SubmitAssignmentHandler(
         IRepository<Submission> submissionRepo,
         IRepository<Assignment> assignmentRepo,
-        ICurrentUser currentUser)
+        ICurrentUserService currentUser)
     {
         this.submissionRepo = submissionRepo;
         this.assignmentRepo = assignmentRepo;
