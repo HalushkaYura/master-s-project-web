@@ -1,23 +1,181 @@
 ﻿@inherits LayoutComponentBase
+@using Radzen
+@using Radzen.Blazor
+@using SmartClass.Application.Contracts.Auth
+@using SmartClass.Application.Contracts.User
+@using SmartClass.Web.Components.Shared
+@using SmartClass.Web.Services
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+@inject CurrentUserState CurrentUser
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
+@implements IDisposable
+
+<RadzenComponents />
+
+<style>
+    /* 1. ФОН: Гарна картинка на весь екран */
+    .main-background {
+        background-image: url('/foto/fone/fone5.jpg');
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+
+    /* 2. САЙДБАР: Суцільний темно-синій колір без білих вставок */
+    .rz-sidebar {
+        background-color: #002171 !important; /* Глибокий синій */
+        color: white !important;
+        box-shadow: 4px 0 10px rgba(0,0,0,0.3); /* Тінь праворуч */
+    }
+
+    /* Стилі для кнопок меню (прибираємо "срібні" бокси) */
+    .rz-panel-menu {
+        background-color: transparent !important;
+        border: none !important;
+    }
+    .rz-navigation-item-link {
+        color: rgba(255,255,255,0.8) !important; /* Трохи прозорий білий */
+    }
+    .rz-navigation-item-link:hover, .rz-navigation-item-link-selected {
+        background-color: rgba(255,255,255,0.15) !important; /* Ефект підсвітки при наведенні */
+        color: #ffffff !important;
+        font-weight: bold;
+    }
+    /* Іконки в меню білі */
+    .rz-navigation-item-icon {
+        color: inherit !important;
+    }
+
+    /* 3. КАРТКА КОНТЕНТУ: "Smart Glass" */
+    /* Це робить текст читабельним, але залишає відчуття легкості */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.85); /* Білий, але трішки прозорий */
+        backdrop-filter: blur(12px); /* Розмиття фону під карткою (ефект матового скла) */
+        border-radius: 16px; /* Закруглені кути */
+        padding: 30px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2); /* Красива тінь */
+        border: 1px solid rgba(255, 255, 255, 0.4); /* Тонкий білий контур */
+        
+        /* Забезпечуємо читабельний текст всередині */
+        color: #1a237e; /* Темно-синій текст */
+    }
+    
+    /* Примусово робимо заголовки темними, щоб їх було видно на білому склі */
+    .glass-card h1, .glass-card h2, .glass-card h3, .glass-card h4, .glass-card h5 {
+        color: #0d47a1 !important;
+    }
+</style>
+
+<RadzenLayout class="main-background" style="height: 100vh; display: flex; flex-direction: column; overflow: hidden;">
+    
+    <RadzenHeader Style="background-color: #ffffff; color: #0d47a1; height: 60px; border-bottom: 2px solid #002171; z-index: 10;">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Style="height: 100%; padding: 0 1rem;">
+            
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                @if (IsAuthenticated)
+                {
+                    <RadzenButton Icon="menu" Variant="Variant.Text" Style="color: #0d47a1;" Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+                }
+            </RadzenStack>
+
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+                @if (IsAuthenticated && userInfo != null)
+                {
+                    <RadzenProfileMenu Style="background-color: transparent; border: none; color: #0d47a1;">
+                        <Template>
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="10px">
+                                <RadzenText Text="@($"{userInfo.Firstname} {userInfo.Lastname}")" Style="color: #0d47a1; font-weight: 600;" class="rz-display-none rz-display-sm-block" />
+                                <RadzenImage Path="/avatars/avatar.png" Style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid #0d47a1;" />
+                            </RadzenStack>
+                        </Template>
+                        <ChildContent>
+                            <RadzenProfileMenuItem Text="Personal Info" Path="userInfo" Icon="account_circle" />
+                            <RadzenProfileMenuItem Text="Logout" Click="Logout" Icon="logout" />
+                        </ChildContent>
+                    </RadzenProfileMenu>
+                }
+                else
+                {
+                   <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                        <RadzenButton Text="Login" Click="@(() => NavigationManager.NavigateTo("/login"))" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Primary" />
+                        <RadzenButton Text="Register" Click="@(() => NavigationManager.NavigateTo("/register"))" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
+                   </RadzenStack>
+                }
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenHeader>
+
+    <div style="display: flex; flex: 1; overflow: hidden;">
+
+        @if (IsAuthenticated && userInfo != null)
+        {
+            <RadzenSidebar @bind-Expanded="@sidebarExpanded" Style="width: 260px; height: 100%;">
+                
+                <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" class="rz-py-4" Style="background-color: rgba(0,0,0,0.1);">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Style="cursor: pointer;" @onclick="NavigateToHome">
+                        <RadzenImage Path="/logo.png" Style="width: 32px; height: 32px;" />
+                        <RadzenText Text="SMART CLASS" TextStyle="TextStyle.Subtitle1" Style="color: white; font-weight: bold; letter-spacing: 1px; margin: 0;" />
+                    </RadzenStack>
+                </RadzenStack>
+
+                <RadzenPanelMenu DisplayStyle="MenuItemDisplayStyle.IconAndText" ShowArrow="true">
+                    <RadzenPanelMenuItem Text="All projects" Icon="dashboard" Path="clasess" />
+                    <RadzenPanelMenuItem Text="Your Class" Icon="class" Path="application" />
+                    <RadzenPanelMenuItem Text="Your Application" Icon="assignment" Path="@($"/chatdialog/{2}")" />
+                    
+                    <div style="margin-top: 20px; padding-left: 16px; margin-bottom: 5px;">
+                        <span style="font-size: 0.75rem; text-transform: uppercase; color: #90caf9; font-weight: bold;">Work Place</span>
+                    </div>
+                    
+                    <RadzenPanelMenuItem Text="Create Project" Icon="add_circle_outline" />
+                </RadzenPanelMenu>
+                
+                <div style="padding: 1rem; margin-top: auto;">
+                     <RadzenButton Text="New Project" Icon="add" Variant="Variant.Flat" ButtonStyle="ButtonStyle.Light" Style="width: 100%; color: #0d47a1;" />
+                </div>
+            </RadzenSidebar>
+        }
+
+        <RadzenBody Style="flex: 1; overflow: auto; background-color: transparent;">
+            <div class="rz-p-4" style="min-height: 100%; display: flex; justify-content: center; align-items: flex-start; padding-top: 40px !important;">
+                
+                <div class="glass-card" style="width: 100%; max-width: 1000px;">
+                    @Body
+                </div>
+
+            </div>
+        </RadzenBody>
+
     </div>
+    
+</RadzenLayout>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+@code {
+    private bool sidebarExpanded = true; 
+    private bool IsAuthenticated => CurrentUser.User != null;
+    private UserInfoDto? userInfo => CurrentUser.User;
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+    protected override void OnInitialized()
+    {
+        CurrentUser.OnChange += HandleUserStateChanged;
+    }
 
-<div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
-</div>
+    private void HandleUserStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        CurrentUser.OnChange -= HandleUserStateChanged;
+    }
+
+    private async Task Logout()
+    {
+        CurrentUser.Clear();
+        NavigationManager.NavigateTo("/");
+    }
+
+    private void NavigateToHome() => NavigationManager.NavigateTo("/");
+}

@@ -1,17 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace SmartClass.Infrastructure.Options
+﻿namespace SmartClass.Infrastructure.Options
 {
     public class JwtOptions
     {
-        public string Issuer { get; set; } = string.Empty;
-        public string Audience { get; set; } = string.Empty;
-        public string Key { get; set; } = string.Empty;
-        public int AccessTokenMinutes { get; set; } = 60;
-        public int RefreshTokenDays { get; set; } = 14;
+        public string Issuer { get; set; } = "SmartClass";
+        public string Audience { get; set; } = "SmartClass.Web";
+        public string Key { get; set; } = string.Empty;   // мінімум 32 символи
+        public int AccessTokenMinutes { get; set; } = 60; // час життя access-токена
+        public int RefreshTokenDays { get; set; } = 7;    // життя refresh-токена
     }
 }

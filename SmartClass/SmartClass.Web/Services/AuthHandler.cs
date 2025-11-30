@@ -15,7 +15,7 @@ namespace SmartClass.Web.Services
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            var token = await storage.GetAsync("access_token");
+            var token = await storage.GetAsync("accessToken");
 
             if (!string.IsNullOrWhiteSpace(token))
             {
@@ -25,5 +25,6 @@ namespace SmartClass.Web.Services
 
             return await base.SendAsync(request, cancellationToken);
         }
+
     }
 }

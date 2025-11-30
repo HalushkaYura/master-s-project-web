@@ -148,7 +148,6 @@ namespace SmartClass.Infrastructure.Persistence
             });
 
             // -------- Channel / ChannelMember / Meeting / MeetingParticipant
-            // (Залишаю мінімум; ти вже маєш enum Type для Channel)
             modelBuilder.Entity<Channel>()
                         .Property(x => x.Type)
                         .HasConversion<int>();

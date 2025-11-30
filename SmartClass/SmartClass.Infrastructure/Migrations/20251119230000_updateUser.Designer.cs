@@ -12,8 +12,8 @@ using SmartClass.Infrastructure.Persistence;
 namespace SmartClass.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251109181350_InitCreate")]
-    partial class InitCreate
+    [Migration("20251119230000_updateUser")]
+    partial class updateUser
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -157,11 +157,13 @@ namespace SmartClass.Infrastructure.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -230,8 +232,10 @@ namespace SmartClass.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("RoleInClass")
-                        .HasColumnType("int");
+                    b.Property<string>("RoleInClass")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
@@ -263,22 +267,27 @@ namespace SmartClass.Infrastructure.Migrations
 
                     b.Property<string>("JoinCode")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(12)
+                        .HasColumnType("nvarchar(12)");
 
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Section")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("JoinCode")
                         .IsUnique();
+
+                    b.HasIndex("OwnerId");
 
                     b.ToTable("Classrooms");
                 });
@@ -291,21 +300,24 @@ namespace SmartClass.Infrastructure.Migrations
 
                     b.Property<string>("BlobPath")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<Guid?>("ClassroomId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ContentType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("FileName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
 
                     b.Property<Guid?>("MaterialId")
                         .HasColumnType("uniqueidentifier");
@@ -323,6 +335,10 @@ namespace SmartClass.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ClassroomId", "MaterialId");
+
+                    b.HasIndex("OwnerId", "SubmissionId", "UploadedAt");
 
                     b.ToTable("Files");
                 });
@@ -353,6 +369,9 @@ namespace SmartClass.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SubmissionId")
+                        .IsUnique();
 
                     b.ToTable("Grades");
                 });
@@ -671,9 +690,6 @@ namespace SmartClass.Infrastructure.Migrations
                     b.Property<bool>("IsRevoked")
                         .HasColumnType("bit");
 
-                    b.Property<string>("ReplacedByToken")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Token")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -753,7 +769,7 @@ namespace SmartClass.Infrastructure.Migrations
                     b.HasOne("SmartClass.Domain.Entities.Classroom", "Classroom")
                         .WithMany("Members")
                         .HasForeignKey("ClassroomId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("SmartClass.Infrastructure.Identity.Entities.ApplicationUser", null)
@@ -763,6 +779,15 @@ namespace SmartClass.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Classroom");
+                });
+
+            modelBuilder.Entity("SmartClass.Domain.Entities.Classroom", b =>
+                {
+                    b.HasOne("SmartClass.Infrastructure.Identity.Entities.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SmartClass.Domain.Entities.Message", b =>

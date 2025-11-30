@@ -1,20 +1,18 @@
 ﻿using SmartClass.Application.Contracts.Auth;
 
-namespace SmartClass.Application.Abstractions;
-public interface IJwtTokenService
+namespace SmartClass.Application.Abstractions
 {
-    // Створити access + refresh без знання про Identity-модель
-    Task<TokenPairDto> CreateTokensAsync(
+    public interface IJwtTokenService
+    {
+        Task<TokenPairDto> CreateTokensAsync(
             Guid userId,
-            string? email,
+            string email,
             string? displayName,
-            IEnumerable<string> roles,
-            CancellationToken cancellationToken);
+            IReadOnlyCollection<string> roles,
+            CancellationToken ct = default);
 
-    // Повертає новий refresh і access, якщо поточний дійсний
-     Task<TokenPairDto?> RotateRefreshTokenAsync(
-         Guid userId,
-         string currentRefreshToken,
-         CancellationToken ct);
+        Task<TokenPairDto> RefreshTokensAsync(string userId, string refreshToken, CancellationToken ct);
+
+        Guid? GetUserIdFromAccessToken(string token);
+    }
 }
-

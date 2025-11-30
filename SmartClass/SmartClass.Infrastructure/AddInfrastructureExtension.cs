@@ -10,6 +10,7 @@ using SmartClass.Application.Options;
 using SmartClass.Infrastructure.Files;
 using SmartClass.Infrastructure.Identity.Entities;
 using SmartClass.Infrastructure.Identity.Services;
+using SmartClass.Infrastructure.Mapping;
 using SmartClass.Infrastructure.Notifications;
 using SmartClass.Infrastructure.Options;
 using SmartClass.Infrastructure.Persistence;
@@ -33,43 +34,46 @@ public static class AddInfrastructureExtension
         
         services.AddScoped<INotificationService, NotificationService>();
 
-        services.AddIdentityCore<ApplicationUser>(options =>
+        services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
         {
             options.User.RequireUniqueEmail = true;
-            options.Password.RequiredLength = 6;
+            options.Password.RequireDigit = true;
+            options.Password.RequireUppercase = true;
+            options.SignIn.RequireConfirmedEmail = false;
         })
-        .AddRoles<ApplicationRole>()
-        .AddEntityFrameworkStores<AppDbContext>()
+                .AddEntityFrameworkStores<AppDbContext>()
         .AddSignInManager();
 
         services.Configure<JwtOptions>(configuration.GetSection("Jwt"));
         var jwt = configuration.GetSection("Jwt").Get<JwtOptions>()!;
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key));
-
-        services.AddAuthentication(options =>
-        {
-            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-        })
-        .AddJwtBearer(options =>
-        {
-            options.TokenValidationParameters = new TokenValidationParameters
+        services
+            .AddAuthentication(o =>
             {
-                ValidIssuer = jwt.Issuer,
-                ValidAudience = jwt.Audience,
-                IssuerSigningKey = key,
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
-                ClockSkew = TimeSpan.FromMinutes(1)
-            };
-        });
+                o.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                o.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(o =>
+            {
+                o.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidIssuer = jwt.Issuer,
+                    ValidAudience = jwt.Audience,
+                    IssuerSigningKey = key,
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ClockSkew = TimeSpan.FromMinutes(1)
+                };
+            });
 
         services.AddAuthorization();
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IUserService, UserService>();
+        services.AddAutoMapper(cfg => cfg.AddProfile<ApplicationProfile>());
 
         return services;
     }

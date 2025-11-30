@@ -1,0 +1,81 @@
+﻿@page "/userInfo"
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using SmartClass.Application.Contracts.Auth
+@using SmartClass.Application.Contracts.User
+@using SmartClass.Web.Services
+@using System.Globalization
+@inject CurrentUserState CurrentUser
+@inject NavigationManager NavigationManager
+
+@attribute [Authorize]
+
+<RadzenContent Container="main">
+    <RadzenHeading Size="H2"
+                   Text="User Profile"
+                   Style="color: #fff; text-align: center; margin-bottom: 2rem;" />
+
+    <div class="user-info-container">
+        @if (userInfo != null)
+        {
+            <div class="avatar-container user-avatar">
+                <RadzenImage Path="/avatars/avatar.png"
+                             Style="width: 150px; height: 150px; border-radius: 50%;" />
+            </div>
+
+            <div class="user-details">
+                <h3 class="user-name">@userInfo.Firstname @userInfo.Lastname</h3>
+                <p class="user-email">Email: @userInfo.Email</p>
+
+                @if (userInfo.BirthDate != DateTime.MinValue)
+                {
+                    <p class="user-birth-date">
+                        Birth Date:
+                        @userInfo.BirthDate.ToString("MMMM dd, yyyy", CultureInfo.InvariantCulture)
+                    </p>
+                }
+
+                @if (userInfo.Roles != null && userInfo.Roles.Any())
+                {
+                    <p class="user-roles">
+                        Roles:
+                        <span>@string.Join(", ", userInfo.Roles)</span>
+                    </p>
+                }
+
+                <RadzenButton Text="View Tasks"
+                              Click="@NavigateToTasksPage"
+                              Style="background-color: #292731; color: #fff; margin-top: 1rem;" />
+            </div>
+        }
+        else
+        {
+            <div class="user-details">
+                <p class="loading-text">You are not logged in. Please log in to view your profile.</p>
+                <RadzenButton Text="Go to Login"
+                              Click="@NavigateToLogin"
+                              Style="background-color: #292731; color: #fff;" />
+            </div>
+        }
+    </div>
+</RadzenContent>
+
+@code {
+    private UserInfoDto? userInfo;
+
+    protected override void OnInitialized()
+    {
+        // Беремо користувача з нашого стану
+        userInfo = CurrentUser.User;
+    }
+
+    private void NavigateToTasksPage()
+    {
+        NavigationManager.NavigateTo("/tasks");
+    }
+
+    private void NavigateToLogin()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+}

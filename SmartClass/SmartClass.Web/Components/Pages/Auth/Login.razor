@@ -1,15 +1,14 @@
 ﻿@page "/login"
 @using Radzen
-@using Radzen.Blazor
 @using SmartClass.Application.Contracts.Auth
-@using System.Net.Http.Headers
-@using System.Net.Http.Json
-@inject HttpClient HttpClient
-@inject NavigationManager NavigationManager
-@inject IJSRuntime JSRuntime
-@inject NotificationService NotificationService
+@using SmartClass.Web.Services
+@inject AuthApiClient AuthApi
+@inject CurrentUserState CurrentUser
+@inject NavigationManager Navigation
+@inject Radzen.NotificationService Toast
+@inject IJSRuntime JS
 
-<EditForm Model="@userLogin" OnValidSubmit="@HandleLogin" FormName="loginForm">
+<EditForm Model="@userLogin" OnValidSubmit="@HandleLogin">
     <div class="row">
         <div class="col-md-6 offset-md-3 col-lg-4 offset-lg-4">
             <section>
@@ -17,32 +16,27 @@
                 <hr />
                 <div class="form-group m-2">
                     <label class="text-login">Email</label>
-                    <RadzenTextBox @bind-Value="userLogin.Email"
-                                   Placeholder="name@example.com"
-                                   class="form-control"
-                                   Name="Email" />
+                    <RadzenTextBox @bind-Value="userLogin.Email" Placeholder="name@example.com" class="form-control" Name="Email" />
                 </div>
                 <div class="form-group m-2">
                     <label class="text-login">Password</label>
-                    <RadzenPassword @bind-Value="userLogin.Password"
-                                    Placeholder="Password"
-                                    class="form-control"
-                                    Name="Password" />
+                    <RadzenPassword @bind-Value="userLogin.Password" Placeholder="Password" class="form-control" Name="Password" />
                 </div>
                 <div class="form-check mb-3 ">
                     <RadzenCheckBox @bind-Value="rememberMe" class="form-check-input" />
                     <label class="form-check-label text-login">Remember me</label>
                 </div>
                 <div class="text-center ">
-                    <RadzenButton Text="Log in"
-                                  ButtonType="ButtonType.Submit"
-                                  Icon="login"
-                                  class="btn bg-secondary btn-block" />
+                    <RadzenButton Text="Log in" ButtonType="ButtonType.Submit" Icon="login" class="btn bg-secondary btn-block" />
                 </div>
                 <div class="text-center mt-3 ">
-                    <RadzenLink Style="color:white"
-                                Text="Register as a new user"
-                                Path="/register" />
+                    <RadzenLink Style="color:white" Text="Forgot your password?" Path="/forgot-password" />
+                </div>
+                <div class="text-center ">
+                    <RadzenLink Style="color:white" Text="Register as a new user" Path="/register" />
+                </div>
+                <div class="text-center ">
+                    <RadzenLink Style="color:white" Text="Resend email confirmation" Path="/resend-email-confirmation" />
                 </div>
             </section>
         </div>
@@ -50,67 +44,53 @@
 </EditForm>
 
 @code {
-    private LoginDto userLogin = new();
+    private LoginDto userLogin = new LoginDto();
     private bool rememberMe;
-
-    [Parameter]
-    public bool isAuthenticated { get; set; }
 
     private async Task HandleLogin()
     {
-        // ⚠️ ВАЖЛИВО: новий ендпоінт з поточного проекту — api/auth/login
-        var response = await HttpClient.PostAsJsonAsync("api/auth/login", userLogin);
-
-        if (response.IsSuccessStatusCode)
+        try
         {
-            var tokens = await response.Content.ReadFromJsonAsync<TokenPairDto>();
+            var tokens = await AuthApi.LoginAsync(userLogin);
+            if (tokens == null)
+                throw new Exception("Login failed: empty token response");
 
-            if (tokens is null)
+            // 1. Зберегти токени в localStorage
+            await JS.InvokeVoidAsync("localStorage.setItem", "accessToken", tokens.AccessToken);
+            await JS.InvokeVoidAsync("localStorage.setItem", "refreshToken", tokens.RefreshToken.Token);
+
+            // 2. Поставити Bearer у HttpClient, який використовує AuthApiClient
+            AuthApi.SetBearer(tokens.AccessToken);
+
+            // 3. Отримати поточного користувача з api/User/info
+            var me = await AuthApi.GetCurrentUserAsync();
+            if (me != null)
             {
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Login Failed",
-                    Detail = "Invalid server response."
-                });
-                return;
+                CurrentUser.SetAuth(tokens, me);
             }
 
-            Console.WriteLine($"Login AccessToken: {tokens.AccessToken}");
-            Console.WriteLine($"Login RefreshToken: {tokens.RefreshToken.Token}");
-
-            // Зберігаємо токени в localStorage (назви ключів — як хочеш)
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "accessToken", tokens.AccessToken);
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "refreshToken", tokens.RefreshToken.Token);
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "refreshTokenExpiresAt", tokens.RefreshToken.ExpiresAt.ToString("O"));
-
-            // Додаємо токен до HttpClient (поки на час життя цієї сесії)
-            HttpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
-
-            isAuthenticated = true;
-
-            NotificationService.Notify(new NotificationMessage
+            // 4. Тост
+            Toast.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Success,
-                Summary = "Login Successful",
-                Detail = "You logged into your account."
+                Summary = "Login successful",
+                Detail = "Welcome back!",
+                Duration = 3000
             });
 
-            await Task.Delay(500);
-            NavigationManager.NavigateTo("/", forceLoad: true);
+            // 5. Перейти на головну
+            Navigation.NavigateTo("/");
         }
-        else
+        catch (Exception ex)
         {
-            var error = await response.Content.ReadAsStringAsync();
-            Console.WriteLine(error);
-
-            NotificationService.Notify(new NotificationMessage
+            Toast.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Error,
-                Summary = "Login Failed",
-                Detail = "Incorrect login or password."
+                Summary = "Error",
+                Detail = ex.Message,
+                Duration = 5000
             });
         }
     }
+
 }

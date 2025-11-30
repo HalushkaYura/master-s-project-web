@@ -8,7 +8,10 @@ namespace SmartClass.Application.Features.Auth.UserValidators
     {
         public UserRegistrationValidation()
         {
-            RuleFor(user => user.DisplayName)
+            RuleFor(user => user.FirstName)
+                .NotNull()
+                .Length(3, 50);
+            RuleFor(user => user.LastName)
                 .NotNull()
                 .Length(3, 50);
 

@@ -5,7 +5,7 @@
 namespace SmartClass.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class UpdateEntities : Migration
+    public partial class updateUser : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

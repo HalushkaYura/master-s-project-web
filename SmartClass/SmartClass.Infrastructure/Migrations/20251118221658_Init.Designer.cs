@@ -12,8 +12,8 @@ using SmartClass.Infrastructure.Persistence;
 namespace SmartClass.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251112193201_Update_Model_Config")]
-    partial class Update_Model_Config
+    [Migration("20251118221658_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -300,21 +300,24 @@ namespace SmartClass.Infrastructure.Migrations
 
                     b.Property<string>("BlobPath")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<Guid?>("ClassroomId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ContentType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("FileName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
 
                     b.Property<Guid?>("MaterialId")
                         .HasColumnType("uniqueidentifier");
@@ -332,6 +335,10 @@ namespace SmartClass.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ClassroomId", "MaterialId");
+
+                    b.HasIndex("OwnerId", "SubmissionId", "UploadedAt");
 
                     b.ToTable("Files");
                 });
@@ -682,9 +689,6 @@ namespace SmartClass.Infrastructure.Migrations
 
                     b.Property<bool>("IsRevoked")
                         .HasColumnType("bit");
-
-                    b.Property<string>("ReplacedByToken")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Token")
                         .IsRequired()

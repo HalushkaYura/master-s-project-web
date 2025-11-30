@@ -1,38 +1,73 @@
-﻿using System.Net.Http.Json;
+﻿using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using SmartClass.Application.Contracts.Auth;
 
 namespace SmartClass.Web.Services
 {
     public class AuthApiClient
     {
-        private readonly HttpClient http;
+        private readonly HttpClient httpClient;
 
-        public AuthApiClient(HttpClient http)
+        public AuthApiClient(HttpClient httpClient)
         {
-            this.http = http;
+            this.httpClient = httpClient;
         }
 
-        public async Task<TokenPairDto?> LoginAsync(LoginDto dto)
+        public async Task<TokenPairDto?> RegisterAsync(RegisterDto dto, CancellationToken ct = default)
         {
-            var res = await http.PostAsJsonAsync("api/auth/login", dto);
-            if (!res.IsSuccessStatusCode)
-                return null;
+            // POST https://{BaseAddress}/api/Auth/register
+            var response = await httpClient.PostAsJsonAsync("api/Auth/register", dto, ct);
+            if (!response.IsSuccessStatusCode) return null;
 
-            return await res.Content.ReadFromJsonAsync<TokenPairDto>();
+            return await response.Content.ReadFromJsonAsync<TokenPairDto>(cancellationToken: ct);
         }
 
-        public async Task<TokenPairDto?> RegisterAsync(RegisterDto dto)
+        public async Task<TokenPairDto?> LoginAsync(LoginDto dto, CancellationToken ct = default)
         {
-            var res = await http.PostAsJsonAsync("api/auth/register", dto);
-            if (!res.IsSuccessStatusCode)
-                return null;
+            var response = await httpClient.PostAsJsonAsync("api/Auth/login", dto, ct);
 
-            return await res.Content.ReadFromJsonAsync<TokenPairDto>();
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorText = await response.Content.ReadAsStringAsync(ct);
+                // тут API повертає { "message": "Invalid login or password." }
+                throw new InvalidOperationException(errorText);
+            }
+
+            return await response.Content.ReadFromJsonAsync<TokenPairDto>(cancellationToken: ct);
         }
 
-        public async Task<UserInfoDto?> GetMeAsync()
+
+
+        public async Task<TokenPairDto?> RefreshAsync(RefreshDto dto, CancellationToken ct = default)
         {
-            return await http.GetFromJsonAsync<UserInfoDto>("api/account/me");
+            var response = await httpClient.PostAsJsonAsync("api/Auth/refresh", dto, ct);
+            if (!response.IsSuccessStatusCode) return null;
+
+            return await response.Content.ReadFromJsonAsync<TokenPairDto>(cancellationToken: ct);
+        }
+
+        /// <summary>
+        /// Отримання поточного користувача (треба реалізувати ендпойнт /api/Auth/me)
+        /// </summary>
+        public async Task<UserInfoDto?> GetCurrentUserAsync(CancellationToken ct = default)
+        {
+            var response = await httpClient.GetAsync("api/User/info", ct);
+            if (!response.IsSuccessStatusCode) return null;
+
+            return await response.Content.ReadFromJsonAsync<UserInfoDto>(cancellationToken: ct);
+        }
+
+        public void SetBearer(string? token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                httpClient.DefaultRequestHeaders.Authorization = null;
+            }
+            else
+            {
+                httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", token);
+            }
         }
     }
 }
