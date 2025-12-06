@@ -46,15 +46,6 @@
                 }
                 else if (IsAuthenticated && userInfo != null)
                 {
-                    <!-- Дії (Desktop) -->
-                    <RadzenStack Orientation="Orientation.Horizontal" Gap="12px" class="rz-display-none rz-display-md-flex">
-                        @if (IsTeacher)
-                        {
-                            <RadzenButton Text="Створити клас" Icon="add" class="btn-primary-custom" Click="@OpenCreateClassDialog" />
-                        }
-                        <RadzenButton Text="Приєднатися" Icon="login" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Style="border-radius: 10px; border-color: #cbd5e1; color: var(--text-secondary); font-weight: 600;" Click="@OpenJoinClassDialog" />
-                    </RadzenStack>
-
                     <!-- Профіль -->
                     <RadzenProfileMenu Style="background-color: transparent; border: none; color: var(--primary-color);">
                         <Template>
@@ -71,15 +62,9 @@
 
                             <RadzenProfileMenuItem Text="Мій профіль" Path="userInfo" Icon="account_circle" />
 
-                            <div class="rz-display-md-none" style="border-top: 1px solid #f1f5f9; margin-top: 5px; padding-top: 5px;">
-                                @if (IsTeacher)
-                                {
-                                    <RadzenProfileMenuItem Text="Створити клас" Icon="add" Click="@OpenCreateClassDialog" />
-                                }
-                                <RadzenProfileMenuItem Text="Приєднатися до класу" Icon="login" Click="@OpenJoinClassDialog" />
-                            </div>
 
-                            <RadzenButton Text="Logout" Click="@DoLogoutAsync" Icon="logout" ButtonStyle="ButtonStyle.Light" Variant="Variant.Outlined" Style="border-radius: 8px; justify-content: center" />
+
+                            <RadzenButton Text="Logout" Click="@DoLogoutAsync" Icon="logout" ButtonStyle="ButtonStyle.Base " Variant="Variant.Outlined" Style="border-radius: 8px; justify-content: center" />
                         </ChildContent>
                     </RadzenProfileMenu>
                 }
@@ -218,7 +203,7 @@
 
         NavigationManager.NavigateTo("/");
     }
-   
+
 
     private void NavigateToHome() => NavigationManager.NavigateTo("/");
 

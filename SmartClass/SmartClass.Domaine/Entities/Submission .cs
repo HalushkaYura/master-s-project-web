@@ -1,5 +1,4 @@
 ﻿using SmartClass.Domain.Enums;
-using SmartClass.Domaine.Primitives;
 
 namespace SmartClass.Domain.Entities
 {

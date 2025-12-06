@@ -1,54 +1,133 @@
-﻿@page "/invite/{ProjectId:int}/{InviteToken}"
-@using System.Security.Claims
-@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
-@inject AuthenticationStateProvider AuthenticationStateProvider
-@inject HttpClient HttpClient
-@using Microsoft.AspNetCore.Components.Authorization
-@using Radzen.Blazor
+﻿@page "/join/{JoinCode}"
+@layout MainLayout
 
-<RadzenContent Container="true" Style="containerStyle">
-    <RadzenHeading Size="H3">Invite</RadzenHeading>
-    <div class="mt-3">
-        <p>Запрошення до проекту.</p>
-    </div>
-    <div class="mt-3">
-        <RadzenButton Click="@InviteTo" Text="Прийняти" ButtonStyle="ButtonStyle.Success" Style="buttonStyle" />
-        <RadzenButton Click="@Cancel" Text="Скасувати" ButtonStyle="ButtonStyle.Danger" Style="buttonStyle" />
-    </div>
-</RadzenContent>
+@using SmartClass.Application.Abstractions
+@using SmartClass.Application.Contracts.Classrooms
+@using SmartClass.Web.Services
+@using Radzen
 
+@inject IClassroomService ClassroomService
+@inject CurrentUserState CurrentUser
+@inject NavigationManager Nav
+@inject NotificationService Toast
+
+<PageTitle>Join Classroom</PageTitle>
+
+@if (isLoading)
+{
+    <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
+}
+else if (error != null)
+{
+    <RadzenAlert Severity="AlertSeverity.Error" Style="margin-top:12px;">
+        @error
+    </RadzenAlert>
+}
+else if (classroom != null)
+{
+    <RadzenContent Style="max-width:600px; margin:auto;">
+        <RadzenPanel Style="padding:24px;">
+
+            <RadzenHeading Size="H3" Text="Запрошення до класу" />
+
+            <h4 class="mt-3">@classroom.Title</h4>
+
+            @if (!string.IsNullOrWhiteSpace(classroom.Section))
+            {
+                <p style="color:#607D8B;">
+                    Секція: @classroom.Section
+                </p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(classroom.Description))
+            {
+                <p style="margin-top:10px;">
+                    @classroom.Description
+                </p>
+            }
+
+            <RadzenAlert Severity="AlertSeverity.Info" Style="margin-top:12px;">
+                Викладач: <b>@classroom.OwnerName</b>
+            </RadzenAlert>
+
+            <div class="mt-4 d-flex gap-2">
+                @if (CurrentUser.User is null)
+                {
+                    <RadzenButton Text="Увійти для приєднання"
+                                  ButtonStyle="ButtonStyle.Primary"
+                                  Click="@(() => Nav.NavigateTo("/login"))" />
+                }
+                else
+                {
+                    <RadzenButton Text="✅ Приєднатися"
+                                  ButtonStyle="ButtonStyle.Success"
+                                  Click="@Join" />
+
+                    <RadzenButton Text="❌ Скасувати"
+                                  ButtonStyle="ButtonStyle.Secondary"
+                                  Variant="Variant.Outlined"
+                                  Click="@(() => Nav.NavigateTo("/"))" />
+                }
+            </div>
+
+        </RadzenPanel>
+    </RadzenContent>
+}
 @code {
-    [Parameter] public int ProjectId { get; set; }
-    [Parameter] public string InviteToken { get; set; }
+    [Parameter] public string JoinCode { get; set; } = string.Empty;
 
-    private async Task InviteTo()
+    private ClassroomDetailsDto? classroom;
+    private bool isLoading = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
     {
-        /*var project = await HttpClient.GetFromJsonAsync<ProjectInfoDTO>($"api/project/info/{ProjectId}");
-        if (project.InviteToken == InviteToken)
+        try
         {
-            var response = await HttpClient.PostAsync($"api/project/add-member/{ProjectId}", null);
-            if (response.IsSuccessStatusCode)
-            {
-                NavigationManager.NavigateTo($"/project/{ProjectId}");
-            }
-            else
-            {
-                // Обробка помилок
-            }
+            classroom = await ClassroomService
+                .GetClassroomByJoinCodeAsync(JoinCode);
         }
-        else
+        catch (Exception ex)
         {
-            // Обробка некоректного запрошення
-        }*/
+            error = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
-    private void Cancel()
+    private async Task Join()
     {
-        NavigationManager.NavigateTo("/");
-    }
+        try
+        {
+            if (CurrentUser.User is null)
+                return;
 
-    private async Task<string> GetUserIdAsync()
-    {
-        return  await HttpClient.GetStringAsync("api/auth/UserIdAuthenticated");
+            if (!Guid.TryParse(CurrentUser.User.UserId, out var userId))
+                return;
+
+            await ClassroomService.JoinClassroomAsync(JoinCode, userId);
+
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Успіх",
+                Detail = "Ви приєдналися до класу!",
+                Duration = 3000
+            });
+
+            Nav.NavigateTo($"/classrooms/{classroom!.Id}");
+        }
+        catch (Exception ex)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Помилка",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
     }
 }

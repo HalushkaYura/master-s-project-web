@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace SmartClass.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class Init : Migration
+    public partial class InitialSmartClass : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -55,36 +55,6 @@ namespace SmartClass.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ChannelMembers",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ChannelId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IsMuted = table.Column<bool>(type: "bit", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ChannelMembers", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Channels",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ClassroomId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    Type = table.Column<int>(type: "int", nullable: false),
-                    Title = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Channels", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Files",
                 columns: table => new
                 {
@@ -98,7 +68,8 @@ namespace SmartClass.Infrastructure.Migrations
                     SizeBytes = table.Column<long>(type: "bigint", nullable: false),
                     BlobPath = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
                     UploadedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -115,7 +86,8 @@ namespace SmartClass.Infrastructure.Migrations
                     Score = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     GradedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     FeedbackHtml = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -150,7 +122,8 @@ namespace SmartClass.Infrastructure.Migrations
                     Role = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     JoinedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     LeftAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -169,7 +142,8 @@ namespace SmartClass.Infrastructure.Migrations
                     CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     JoinCode = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     RecordingUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -185,7 +159,8 @@ namespace SmartClass.Infrastructure.Migrations
                     Type = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     PayloadJson = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     IsRead = table.Column<bool>(type: "bit", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -217,7 +192,8 @@ namespace SmartClass.Infrastructure.Migrations
                     StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false),
                     SubmittedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -343,7 +319,8 @@ namespace SmartClass.Infrastructure.Migrations
                     DueAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     AllowLate = table.Column<bool>(type: "bit", nullable: false),
                     Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -366,7 +343,8 @@ namespace SmartClass.Infrastructure.Migrations
                     JoinCode = table.Column<string>(type: "nvarchar(12)", maxLength: 12, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     IsArchived = table.Column<bool>(type: "bit", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -379,25 +357,25 @@ namespace SmartClass.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Messages",
+                name: "Channels",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ChannelId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    AuthorId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Text = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    EditedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    ParentMessageId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    ClassroomId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Type = table.Column<int>(type: "int", nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Messages", x => x.Id);
+                    table.PrimaryKey("PK_Channels", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Messages_AspNetUsers_AuthorId",
-                        column: x => x.AuthorId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        name: "FK_Channels_Classrooms_ClassroomId",
+                        column: x => x.ClassroomId,
+                        principalTable: "Classrooms",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -408,7 +386,8 @@ namespace SmartClass.Infrastructure.Migrations
                     ClassroomId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     RoleInClass = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -422,6 +401,60 @@ namespace SmartClass.Infrastructure.Migrations
                         name: "FK_ClassMembers_Classrooms_ClassroomId",
                         column: x => x.ClassroomId,
                         principalTable: "Classrooms",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ChannelMembers",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ChannelId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsMuted = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ChannelMembers", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ChannelMembers_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ChannelMembers_Channels_ChannelId",
+                        column: x => x.ChannelId,
+                        principalTable: "Channels",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Messages",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ChannelId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    AuthorId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Text = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Messages", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Messages_AspNetUsers_AuthorId",
+                        column: x => x.AuthorId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Messages_Channels_ChannelId",
+                        column: x => x.ChannelId,
+                        principalTable: "Channels",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -474,6 +507,22 @@ namespace SmartClass.Infrastructure.Migrations
                 name: "IX_Assignments_CreatedBy",
                 table: "Assignments",
                 column: "CreatedBy");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ChannelMembers_ChannelId_UserId",
+                table: "ChannelMembers",
+                columns: new[] { "ChannelId", "UserId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ChannelMembers_UserId",
+                table: "ChannelMembers",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Channels_ClassroomId",
+                table: "Channels",
+                column: "ClassroomId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ClassMembers_ClassroomId_UserId",
@@ -565,9 +614,6 @@ namespace SmartClass.Infrastructure.Migrations
                 name: "ChannelMembers");
 
             migrationBuilder.DropTable(
-                name: "Channels");
-
-            migrationBuilder.DropTable(
                 name: "ClassMembers");
 
             migrationBuilder.DropTable(
@@ -599,6 +645,9 @@ namespace SmartClass.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
+
+            migrationBuilder.DropTable(
+                name: "Channels");
 
             migrationBuilder.DropTable(
                 name: "Classrooms");

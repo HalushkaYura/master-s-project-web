@@ -1,6 +1,4 @@
-﻿using SmartClass.Domaine.Primitives;
-
-namespace SmartClass.Domain.Entities
+﻿namespace SmartClass.Domain.Entities
 {
     public class Assignment : BaseEntity
     {

@@ -34,7 +34,9 @@ namespace SmartClass.Infrastructure.Persistence
         {
             base.OnModelCreating(modelBuilder);
 
-            // -------- Classroom
+            // =========================
+            // CLASSROOM
+            // =========================
             modelBuilder.Entity<Classroom>(b =>
             {
                 b.HasKey(x => x.Id);
@@ -52,41 +54,50 @@ namespace SmartClass.Infrastructure.Persistence
 
                 b.HasIndex(x => x.JoinCode).IsUnique();
 
-                // FK на власника класу (ApplicationUser) без каскадування
+                // Власник класу – ApplicationUser, без каскаду
                 b.HasOne<ApplicationUser>()
                  .WithMany()
                  .HasForeignKey(x => x.OwnerId)
                  .OnDelete(DeleteBehavior.NoAction);
+
+                // Classroom -> Members
+                b.HasMany(x => x.Members)
+                 .WithOne(m => m.Classroom)
+                 .HasForeignKey(m => m.ClassroomId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                // Classroom -> Channels
+                b.HasMany(x => x.Channels)
+                 .WithOne(ch => ch.Classroom)
+                 .HasForeignKey(ch => ch.ClassroomId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // -------- ClassMember
+            // =========================
+            // CLASS MEMBER
+            // =========================
             modelBuilder.Entity<ClassMember>(b =>
             {
                 b.HasKey(x => x.Id);
 
-                // Унікальність: один користувач не може двічі вступити в один клас
                 b.HasIndex(x => new { x.ClassroomId, x.UserId }).IsUnique();
 
-                // Enum → string (читабельно в БД)
                 b.Property(x => x.RoleInClass)
                  .HasConversion<string>()
                  .HasMaxLength(20)
                  .IsRequired();
 
-                // Члени класу видаляються при видаленні класу (каскад з Classroom)
-                b.HasOne(x => x.Classroom)
-                 .WithMany(c => c.Members)
-                 .HasForeignKey(x => x.ClassroomId)
-                 .OnDelete(DeleteBehavior.Cascade);
-
-                // Посилання на користувача — без каскаду (щоб не було multiple cascade paths)
+                // посилання на Classroom уже налаштоване через Classroom.HasMany(...)
+                // посилання на ApplicationUser
                 b.HasOne<ApplicationUser>()
                  .WithMany()
                  .HasForeignKey(x => x.UserId)
                  .OnDelete(DeleteBehavior.NoAction);
             });
 
-            // -------- Assignment
+            // =========================
+            // ASSIGNMENT
+            // =========================
             modelBuilder.Entity<Assignment>(b =>
             {
                 b.HasKey(x => x.Id);
@@ -97,82 +108,140 @@ namespace SmartClass.Infrastructure.Persistence
 
                 b.Property(x => x.Status)
                  .IsRequired()
-                 .HasMaxLength(20); // Draft|Published|Closed
+                 .HasMaxLength(20);
 
                 b.HasIndex(x => new { x.ClassroomId, x.DueAt });
 
-                // Хто створив — користувач, без каскаду
                 b.HasOne<ApplicationUser>()
                  .WithMany()
                  .HasForeignKey(x => x.CreatedBy)
                  .OnDelete(DeleteBehavior.NoAction);
             });
 
-            // -------- Submission
+            // =========================
+            // SUBMISSION
+            // =========================
             modelBuilder.Entity<Submission>(b =>
             {
                 b.HasKey(x => x.Id);
 
-                // Один студент → одна подача на завдання (поки так)
                 b.HasIndex(x => new { x.AssignmentId, x.StudentId }).IsUnique();
 
-                // Enum (SubmissionStatus) як int — швидко/компактно
                 b.Property(x => x.Status).HasConversion<int>();
             });
 
-            // -------- Grade
+            // =========================
+            // GRADE
+            // =========================
             modelBuilder.Entity<Grade>(b =>
             {
                 b.HasKey(x => x.Id);
 
-                // Одна оцінка на Submission (оновлюється при переоцінці)
                 b.HasIndex(x => x.SubmissionId).IsUnique();
 
                 b.Property(x => x.Score)
                  .HasPrecision(18, 2);
             });
 
-            // -------- Message
+            // =========================
+            // CHANNEL
+            // =========================
+            modelBuilder.Entity<Channel>(b =>
+            {
+                b.HasKey(x => x.Id);
+
+                b.Property(x => x.Title)
+                 .IsRequired()
+                 .HasMaxLength(200);
+
+                b.Property(x => x.Type)
+                 .HasConversion<int>()
+                 .IsRequired();
+
+                b.HasOne(x => x.Classroom)
+                 .WithMany(c => c.Channels)
+                 .HasForeignKey(x => x.ClassroomId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // =========================
+            // CHANNEL MEMBER
+            // =========================
+            modelBuilder.Entity<ChannelMember>(b =>
+            {
+                b.HasKey(x => x.Id);
+
+                b.HasIndex(x => new { x.ChannelId, x.UserId }).IsUnique();
+
+                b.HasOne(x => x.Channel)
+                 .WithMany(c => c.Members)
+                 .HasForeignKey(x => x.ChannelId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne<ApplicationUser>()
+                 .WithMany()
+                 .HasForeignKey(x => x.UserId)
+                 .OnDelete(DeleteBehavior.NoAction);
+            });
+
+            // =========================
+            // MESSAGE
+            // =========================
             modelBuilder.Entity<Message>(b =>
             {
                 b.HasKey(x => x.Id);
 
-                // Індекс для вивантаження стрічки
+                b.Property(x => x.Text)
+                 .IsRequired();
+
                 b.HasIndex(x => new { x.ChannelId, x.CreatedAt });
 
-                // Автор повідомлення — без каскаду
+                b.HasOne(x => x.Channel)
+                 .WithMany(c => c.Messages)
+                 .HasForeignKey(x => x.ChannelId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
                 b.HasOne<ApplicationUser>()
                  .WithMany()
                  .HasForeignKey(x => x.AuthorId)
                  .OnDelete(DeleteBehavior.NoAction);
             });
 
-            // -------- Channel / ChannelMember / Meeting / MeetingParticipant
-            modelBuilder.Entity<Channel>()
-                        .Property(x => x.Type)
-                        .HasConversion<int>();
-
-            // Якщо є зв’язки з ApplicationUser — теж ставимо NoAction.
-
-            // -------- Notification
+            // =========================
+            // NOTIFICATION
+            // =========================
             modelBuilder.Entity<Notification>(b =>
             {
                 b.HasKey(x => x.Id);
                 b.HasIndex(x => new { x.UserId, x.IsRead, x.CreatedAt });
             });
 
-            // --------- FileResource   
+            // =========================
+            // FILE RESOURCE
+            // =========================
             modelBuilder.Entity<FileResource>(b =>
             {
                 b.HasKey(x => x.Id);
-                b.Property(x => x.FileName).IsRequired().HasMaxLength(260);
-                b.Property(x => x.ContentType).IsRequired().HasMaxLength(200);
-                b.Property(x => x.BlobPath).IsRequired().HasMaxLength(1000);
+
+                b.Property(x => x.FileName)
+                 .IsRequired()
+                 .HasMaxLength(260);
+
+                b.Property(x => x.ContentType)
+                 .IsRequired()
+                 .HasMaxLength(200);
+
+                b.Property(x => x.BlobPath)
+                 .IsRequired()
+                 .HasMaxLength(1000);
 
                 b.HasIndex(x => new { x.OwnerId, x.SubmissionId, x.UploadedAt });
                 b.HasIndex(x => new { x.ClassroomId, x.MaterialId });
             });
-            // -------- RefreshToken
+
+            // =========================
+            // REFRESH TOKEN
+            // =========================
             modelBuilder.Entity<RefreshToken>(b =>
             {
                 b.HasKey(x => x.Id);

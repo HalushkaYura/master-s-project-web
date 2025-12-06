@@ -1,6 +1,4 @@
-﻿using SmartClass.Domaine.Primitives;
-
-namespace SmartClass.Domain.Entities
+﻿namespace SmartClass.Domain.Entities
 {
     public class Classroom : BaseEntity
     {
@@ -12,5 +10,6 @@ namespace SmartClass.Domain.Entities
         public bool IsArchived { get; set; }
 
         public ICollection<ClassMember> Members { get; set; } = new List<ClassMember>();
+        public ICollection<Channel> Channels { get; set; } = new List<Channel>();   // 🔹 додали
     }
 }

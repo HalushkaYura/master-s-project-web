@@ -19,5 +19,18 @@ namespace SmartClass.Application.Abstractions
         /// </summary>
         Task<IReadOnlyList<MyClassroomDto>> GetMyClassroomsAsync(Guid ApplicationUserId, CancellationToken ct = default);
 
+        /// <summary>
+        /// Отримати всю інформацію, про клас , включно з учасниками.
+        /// </summary>
+        Task<ClassroomDetailsDto> GetClassroomDetailsAsync(
+    Guid classroomId,
+    Guid currentUserId,
+    CancellationToken ct = default);
+        /// <summary>
+        /// Отримати інформацію про клас за кодом приєднання.
+        /// </summary>
+        Task<ClassroomDetailsDto> GetClassroomByJoinCodeAsync(
+    string joinCode,
+    CancellationToken ct = default);
     }
 }

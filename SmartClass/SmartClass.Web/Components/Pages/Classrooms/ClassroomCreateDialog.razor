@@ -71,7 +71,9 @@
         }
         catch (Exception ex)
         {
-            ShowError(ex.Message);
+            var msg = ex.InnerException?.Message ?? ex.Message;
+
+            ShowError(msg);
         }
         finally
         {

@@ -1,5 +1,9 @@
 ﻿@using System.ComponentModel.DataAnnotations
-@inject HttpClient Http
+@using SmartClass.Application.Abstractions
+@using SmartClass.Web.Services
+
+@inject IClassroomService ClassroomService
+@inject CurrentUserState CurrentUser
 @inject Radzen.NotificationService Toast
 @inject Radzen.DialogService DialogService
 
@@ -7,11 +11,15 @@
     <DataAnnotationsValidator />
 
     <RadzenFieldset Style="border:none; padding-left:0;">
-        <RadzenLabel Text="Код приєднання" Component="JoinCode" Style="font-weight:600; color:#0B2E6F;" />
+        <RadzenLabel Text="Код приєднання"
+                     Component="JoinCode"
+                     Style="font-weight:600; color:#0B2E6F;" />
+
         <RadzenTextBox @bind-Value="vm.JoinCode"
                        Name="JoinCode"
                        Placeholder="Введіть код від викладача"
                        Style="width:100%; margin-bottom:6px;" />
+
         <ValidationMessage For="@(() => vm.JoinCode)" />
     </RadzenFieldset>
 
@@ -37,39 +45,49 @@
     {
         try
         {
-            var response = await Http.PostAsJsonAsync("api/classroom/join", vm);
-
-            if (response.IsSuccessStatusCode)
+            if (CurrentUser.User is null)
             {
                 Toast.Notify(new NotificationMessage
                 {
-                    Severity = NotificationSeverity.Success,
-                    Summary = "Приєднано до класу",
-                    Detail = "Тепер ви учасник класу.",
-                    Duration = 3000
+                    Severity = NotificationSeverity.Warning,
+                    Summary = "Не авторизовано",
+                    Detail = "Спочатку увійдіть у систему.",
+                    Duration = 4000
                 });
-
-                DialogService.Close(true);
+                return;
             }
-            else
-            {
-                var error = await response.Content.ReadAsStringAsync();
 
+            var userIdStr = CurrentUser.User.UserId;
+            if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
                 Toast.Notify(new NotificationMessage
                 {
                     Severity = NotificationSeverity.Error,
-                    Summary = "Не вдалося приєднатися",
-                    Detail = error,
+                    Summary = "Помилка користувача",
+                    Detail = "Некоректний ідентифікатор користувача.",
                     Duration = 4000
                 });
+                return;
             }
+
+            await ClassroomService.JoinClassroomAsync(vm.JoinCode, userId);
+
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Приєднано до класу",
+                Detail = "Тепер ви учасник класу.",
+                Duration = 3000
+            });
+
+            DialogService.Close(true);
         }
         catch (Exception ex)
         {
             Toast.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Error,
-                Summary = "Помилка",
+                Summary = "Не вдалося приєднатися",
                 Detail = ex.Message,
                 Duration = 4000
             });

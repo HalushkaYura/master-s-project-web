@@ -8,11 +8,10 @@
     --primary-light: #3e50b4;
     --accent-color: #42a5f5;
     /* Текст */
-    --text-main: #1e293b; /* Slate 800 - м'якший за чорний */
+    --text-main: #1e293b; /* Slate 800 */
     --text-secondary: #475569; /* Slate 600 */
     --text-muted: #94a3b8; /* Slate 400 */
-    /* --- ЗМІНЕНО: КОЛІР СКЛА (ICE BLUE) --- */
-    /* Замість чистого білого використовуємо дуже світлий блакитний */
+    /* Скло (Ice Blue) */
     --glass-bg: rgba(245, 248, 255, 0.96);
     --glass-border: rgba(255, 255, 255, 0.5);
     --glass-shadow: 0 20px 40px rgba(0, 20, 50, 0.15);
@@ -46,7 +45,6 @@ html, body {
         left: 0;
         right: 0;
         bottom: 0;
-        /* Збільшив затемнення для кращого контрасту з карткою */
         background: rgba(10, 20, 40, 0.25);
         pointer-events: none;
         z-index: 0;
@@ -88,28 +86,26 @@ html, body {
     margin-right: 12px;
 }
 
-/* Hover */
 .rz-navigation-item-wrapper:hover {
     background-color: rgba(255, 255, 255, 0.1) !important;
     transform: translateX(3px);
 }
 
-/* Active */
 .rz-navigation-item-link-selected {
     background-color: rgba(255, 255, 255, 0.15) !important;
     color: #ffffff !important;
     font-weight: 700;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-    border-left: 3px solid var(--accent-color); /* Акцент зліва */
+    border-left: 3px solid var(--accent-color);
 }
 
     .rz-navigation-item-link-selected .rz-navigation-item-icon {
         color: var(--accent-color) !important;
     }
 
-/* --- ХЕДЕР (Тепер теж Ice Blue) --- */
+/* --- ХЕДЕР --- */
 .custom-header {
-    background-color: rgba(245, 248, 255, 0.98) !important; /* Відповідає картці */
+    background-color: rgba(245, 248, 255, 0.98) !important;
     height: 64px;
     border-bottom: 1px solid rgba(0, 33, 113, 0.08);
     box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.03);
@@ -124,12 +120,14 @@ html, body {
     color: var(--primary-color);
 }
 
-/* --- СКЛЯНА КАРТКА (М'якіший колір) --- */
+/* --- СКЛЯНА КАРТКА --- */
 .layout-content-center {
     display: flex;
-    justify-content: center;
+    flex-direction: column; /* ЗМІНА: Елементи йдуть зверху вниз */
+    justify-content: flex-start; /* ЗМІНА: Починаємо зверху, а не з центру */
+    align-items: center; /* Центруємо по горизонталі */
     padding: 2rem;
-    overflow-y: auto;
+    overflow-y: auto; /* Скрол працює тут */
     width: 100%;
     height: 100%;
     position: relative;
@@ -137,17 +135,21 @@ html, body {
 }
 
 .glass-card {
-    background: var(--glass-bg); /* Ice Blue */
+    background: var(--glass-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
     border-radius: 24px;
     padding: 40px 50px;
-    /* М'якіша, але глибша тінь */
+    /* Тіні */
     box-shadow: 0 10px 30px -5px rgba(0, 20, 60, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
     width: 100%;
     max-width: 1200px;
     margin-bottom: 2rem;
+    /* ЗМІНА: Дозволяємо картці рости */
+    height: auto !important;
+    flex-shrink: 0; /* Не дозволяємо стискатися */
+
     animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -184,8 +186,7 @@ html, body {
     display: block;
 }
 
-/* --- ПОЛЯ ВВОДУ (На контрасті) --- */
-/* Тут ми робимо поля чисто білими, щоб вони виділялися на світло-блакитному фоні картки */
+/* --- ЕЛЕМЕНТИ ФОРМ --- */
 .rz-textbox, .rz-password, .rz-dropdown, .rz-textarea {
     background-color: #ffffff !important;
     border: 1px solid #cbd5e1 !important;
@@ -194,7 +195,7 @@ html, body {
     color: var(--text-main) !important;
     font-size: 0.95rem;
     transition: all 0.2s;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02); /* Легка тінь */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 }
 
     .rz-textbox:focus, .rz-password:focus {
@@ -223,12 +224,290 @@ html, body {
         transform: scale(0.97);
     }
 
-/* --- ЗАГРУЗКА --- */
 .loading-spinner {
     display: inline-block;
     animation: spin 1s linear infinite;
 }
 
+/* --- DATA GRID (GLASS STYLE) --- */
+.glass-grid.rz-datagrid {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.glass-grid .rz-grid-table {
+    border-collapse: collapse !important;
+}
+
+    .glass-grid .rz-grid-table thead th {
+        background-color: rgba(255, 255, 255, 0.3) !important;
+        border-bottom: 1px solid rgba(0, 33, 113, 0.1) !important;
+        color: var(--primary-color) !important;
+        font-weight: 600;
+        font-family: 'Inter', sans-serif;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        padding: 16px !important;
+    }
+
+    .glass-grid .rz-grid-table tr td {
+        background-color: transparent !important;
+        border-bottom: 1px solid rgba(0, 33, 113, 0.05) !important;
+        color: var(--text-secondary);
+        padding: 16px !important;
+        font-size: 0.95rem;
+    }
+
+.glass-grid .rz-data-row:hover td {
+    background-color: rgba(255, 255, 255, 0.6) !important;
+    color: var(--primary-color) !important;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.glass-grid .rz-column-title {
+    color: inherit !important;
+}
+
+.glass-grid .rz-cell-data {
+    color: inherit !important;
+}
+/* Стилі для Header */
+.classroom-header {
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    padding-bottom: 30px;
+    margin-bottom: 30px;
+}
+
+.class-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0, 33, 113, 0.2);
+}
+
+.meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background-color: rgba(255,255,255,0.6);
+    border: 1px solid rgba(0,0,0,0.05);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Картка запрошення */
+.invite-card {
+    background: white;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+.invite-label {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.code-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+    .code-display:hover {
+        background-color: rgba(0,0,0,0.03);
+    }
+
+.code-text {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    letter-spacing: 1px;
+}
+
+/* Панель викладача */
+.teacher-toolbar {
+    background-color: rgba(255,255,255,0.5);
+    border: 1px dashed var(--primary-light);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+}
+
+/* Вкладки */
+.tab-content-wrapper {
+    padding: 20px 0;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.content-placeholder {
+    padding: 40px;
+    text-align: center;
+    border: 2px dashed rgba(0,0,0,0.1);
+    border-radius: 12px;
+    color: var(--text-muted);
+}
+
+/* Перевизначення стилів RadzenTabs, щоб прибрати рамки */
+.rz-tabview-nav {
+    background: transparent !important;
+    border: none !important;
+}
+
+.rz-tabview-panels {
+    background: transparent !important;
+    border: none !important;
+}
+
+
+
+/* Стилі для порожнього стану */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: rgba(255,255,255,0.4);
+    border: 2px dashed rgba(0,0,0,0.1);
+    border-radius: 20px;
+    color: var(--text-secondary);
+}
+
+/* --- КАРТКА КЛАСУ (Google Classroom Style) --- */
+.classroom-card {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.08);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+    .classroom-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+
+/* Верхня кольорова частина */
+.card-header-bg {
+    height: 100px;
+    padding: 16px;
+    color: white;
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Градієнти для карток (рандомно призначаються) */
+.grad-1 {
+    background: linear-gradient(135deg, #002171, #42a5f5);
+}
+
+.grad-2 {
+    background: linear-gradient(135deg, #00695c, #4db6ac);
+}
+
+.grad-3 {
+    background: linear-gradient(135deg, #ad1457, #f06292);
+}
+
+.grad-4 {
+    background: linear-gradient(135deg, #4527a0, #7e57c2);
+}
+
+.grad-5 {
+    background: linear-gradient(135deg, #ef6c00, #ffb74d);
+}
+
+.card-header-content {
+    flex: 1;
+    overflow: hidden;
+}
+
+    .card-header-content h4 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 1.3rem;
+    }
+
+.card-body {
+    padding: 16px;
+    flex: 1;
+    position: relative;
+}
+
+.card-footer {
+    padding: 12px 16px;
+    border-top: 1px solid rgba(0,0,0,0.05);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Бейджі ролей */
+.role-badge {
+    position: absolute;
+    top: -12px;
+    right: 16px;
+}
+
+.badge-teacher {
+    background: var(--primary-color);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.badge-student {
+    background: white;
+    color: var(--text-secondary);
+    border: 1px solid #cbd5e1;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Прибираємо стандартні стилі вкладок Radzen */
+.rz-tabview-nav {
+    background: transparent !important;
+    border: none !important;
+}
+
+.rz-tabview-panels {
+    background: transparent !important;
+    border: none !important;
+}
+
+.rz-tabview-nav li.rz-tabview-selected a {
+    background-color: rgba(255,255,255,0.5) !important;
+    color: var(--primary-color) !important;
+    font-weight: 700 !important;
+}
 /* --- МОБІЛЬНА АДАПТАЦІЯ --- */
 @media (max-width: 768px) {
     .glass-card {

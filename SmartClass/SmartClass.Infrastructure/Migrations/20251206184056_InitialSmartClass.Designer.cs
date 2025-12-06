@@ -12,8 +12,8 @@ using SmartClass.Infrastructure.Persistence;
 namespace SmartClass.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251118221658_Init")]
-    partial class Init
+    [Migration("20251206184056_InitialSmartClass")]
+    partial class InitialSmartClass
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -165,6 +165,9 @@ namespace SmartClass.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedBy");
@@ -180,19 +183,26 @@ namespace SmartClass.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("ClassroomId")
+                    b.Property<Guid>("ClassroomId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Title")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<int>("Type")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("ClassroomId");
 
                     b.ToTable("Channels");
                 });
@@ -212,10 +222,18 @@ namespace SmartClass.Infrastructure.Migrations
                     b.Property<bool>("IsMuted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ChannelId", "UserId")
+                        .IsUnique();
 
                     b.ToTable("ChannelMembers");
                 });
@@ -236,6 +254,9 @@ namespace SmartClass.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
@@ -281,6 +302,9 @@ namespace SmartClass.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
@@ -331,6 +355,9 @@ namespace SmartClass.Infrastructure.Migrations
                     b.Property<Guid?>("SubmissionId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("datetime2");
 
@@ -367,6 +394,9 @@ namespace SmartClass.Infrastructure.Migrations
 
                     b.Property<Guid>("SubmissionId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
@@ -441,6 +471,9 @@ namespace SmartClass.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.HasKey("Id");
 
                     b.ToTable("Meetings");
@@ -468,6 +501,9 @@ namespace SmartClass.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
@@ -491,15 +527,12 @@ namespace SmartClass.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("EditedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("ParentMessageId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("Text")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
@@ -530,6 +563,9 @@ namespace SmartClass.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
@@ -559,6 +595,9 @@ namespace SmartClass.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
@@ -764,6 +803,34 @@ namespace SmartClass.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SmartClass.Domain.Entities.Channel", b =>
+                {
+                    b.HasOne("SmartClass.Domain.Entities.Classroom", "Classroom")
+                        .WithMany("Channels")
+                        .HasForeignKey("ClassroomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Classroom");
+                });
+
+            modelBuilder.Entity("SmartClass.Domain.Entities.ChannelMember", b =>
+                {
+                    b.HasOne("SmartClass.Domain.Entities.Channel", "Channel")
+                        .WithMany("Members")
+                        .HasForeignKey("ChannelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SmartClass.Infrastructure.Identity.Entities.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Channel");
+                });
+
             modelBuilder.Entity("SmartClass.Domain.Entities.ClassMember", b =>
                 {
                     b.HasOne("SmartClass.Domain.Entities.Classroom", "Classroom")
@@ -797,10 +864,27 @@ namespace SmartClass.Infrastructure.Migrations
                         .HasForeignKey("AuthorId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.HasOne("SmartClass.Domain.Entities.Channel", "Channel")
+                        .WithMany("Messages")
+                        .HasForeignKey("ChannelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Channel");
+                });
+
+            modelBuilder.Entity("SmartClass.Domain.Entities.Channel", b =>
+                {
+                    b.Navigation("Members");
+
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("SmartClass.Domain.Entities.Classroom", b =>
                 {
+                    b.Navigation("Channels");
+
                     b.Navigation("Members");
                 });
 #pragma warning restore 612, 618

@@ -1,4 +1,5 @@
 ﻿@page "/register"
+@layout MainLayout
 @using Radzen
 @using SmartClass.Application.Contracts.Auth
 @using SmartClass.Web.Services
@@ -9,58 +10,93 @@
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
-<EditForm Model="@model" OnValidSubmit="@(() => HandleRegistration(model))">
-    <div class="row">
-        <div class="col-md-6 offset-md-3 col-lg-4 offset-lg-4">
-            <section>
-                <h2 class="text-center text-login">Register a new account.</h2>
-                <hr />
-                <div class="form-group m-2">
-                    <label class="text-login">First Name</label>
-                    <RadzenTextBox @bind-Value="model.FirstName" Placeholder="First Name" class="form-control" Name="Firstname" />
-                </div>
-                <div class="form-group m-2">
-                    <label class="text-login">Last Name</label>
-                    <RadzenTextBox @bind-Value="model.LastName" Placeholder="Last Name" class="form-control" Name="Lastname" />
-                </div>
-                <div class="form-group m-2">
-                    <label class="text-login">Email</label>
-                    <RadzenTextBox @bind-Value="model.Email" Placeholder="name@example.com" class="form-control" Name="Email" />
-                </div>
+<PageTitle>Реєстрація</PageTitle>
 
-                <div class="form-group m-2">
-                    <label class="text-login">Password</label>
-                    <RadzenPassword @bind-Value="model.Password" Placeholder="Password" class="form-control" Name="Password" />
-                </div>
-                <div class="form-group m-2">
-                    <label class="text-login">Birth Date</label>
-                    <RadzenDatePicker @bind-Value="model.BirthDate"
-                                      Placeholder="Birth Date"
-                                      class="form-control"
-                                      Name="BirthDate" />
-                </div>
+<div class="register-container">
 
-                <div class="form-group m-2">
-                    <label class="text-login">Role</label>
-                    <RadzenDropDown @bind-Value="model.Role"
-                                    TValue="string"
-                                    Data="@roles"
-                                    TextProperty="Text"
-                                    ValueProperty="Value"
-                                    Style="width:100%"
-                                    Placeholder="Select role" />
-                </div>
+    <div class="glass-card register-card animate-fade-in">
 
-                <div class="text-center m-2">
-                    <RadzenButton Text="Register" ButtonType="ButtonType.Submit" Icon="person_add" class="btn btn-primary btn-block m-2" />
-                </div>
-                <div class="text-center mt-3">
-                    <RadzenLink Style="color:azure" Text="Already have an account? Log in" Path="/login" />
-                </div>
-            </section>
+        <!-- Заголовок -->
+        <div class="text-center mb-4">
+            <RadzenImage Path="/logo.png" Style="width: 50px; height: 50px; margin-bottom: 10px;" />
+            <h2 style="color: var(--primary-color); font-weight: 800; margin: 0; font-size: 1.8rem;">Створити акаунт</h2>
+            <p style="color: var(--text-secondary); font-size: 0.95rem;">Заповніть форму для реєстрації</p>
         </div>
+
+        <EditForm Model="@model" OnValidSubmit="@(() => HandleRegistration(model))">
+            <DataAnnotationsValidator />
+
+            <RadzenStack Gap="1rem">
+
+                <RadzenRow RowGap="1rem">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenText Text="Ім'я" TextStyle="TextStyle.Subtitle2" Style="color: var(--text-main); font-weight: 600; margin-bottom: 4px;" />
+                        <RadzenTextBox @bind-Value="model.FirstName" Placeholder="Іван" Name="Firstname" Style="width: 100%;" />
+                        <ValidationMessage For="@(() => model.FirstName)" />
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenText Text="Прізвище" TextStyle="TextStyle.Subtitle2" Style="color: var(--text-main); font-weight: 600; margin-bottom: 4px;" />
+                        <RadzenTextBox @bind-Value="model.LastName" Placeholder="Петренко" Name="Lastname" Style="width: 100%;" />
+                        <ValidationMessage For="@(() => model.LastName)" />
+                    </RadzenColumn>
+                </RadzenRow>
+
+                <div>
+                    <RadzenText Text="Електронна пошта" TextStyle="TextStyle.Subtitle2" Style="color: var(--text-main); font-weight: 600; margin-bottom: 4px;" />
+                    <RadzenTextBox @bind-Value="model.Email" Placeholder="name@example.com" Name="Email" Style="width: 100%;" />
+                    <ValidationMessage For="@(() => model.Email)" />
+                </div>
+
+                <div>
+                    <RadzenText Text="Пароль" TextStyle="TextStyle.Subtitle2" Style="color: var(--text-main); font-weight: 600; margin-bottom: 4px;" />
+                    <RadzenPassword @bind-Value="model.Password" Placeholder="••••••••" Name="Password" Style="width: 100%;" />
+                    <ValidationMessage For="@(() => model.Password)" />
+                </div>
+
+                <RadzenRow RowGap="1rem">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenText Text="Дата народження" TextStyle="TextStyle.Subtitle2" Style="color: var(--text-main); font-weight: 600; margin-bottom: 4px;" />
+                        <RadzenDatePicker @bind-Value="model.BirthDate" Placeholder="Оберіть дату" Name="BirthDate" Style="width: 100%;" />
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenText Text="Роль" TextStyle="TextStyle.Subtitle2" Style="color: var(--text-main); font-weight: 600; margin-bottom: 4px;" />
+                        <RadzenDropDown @bind-Value="model.Role" Data="@roles" TextProperty="Text" ValueProperty="Value" Placeholder="Хто ви?" Style="width: 100%;" />
+                    </RadzenColumn>
+                </RadzenRow>
+
+                <!-- Кнопка реєстрації -->
+                <button type="submit" class="btn-primary-custom w-100 mt-2" style="padding: 12px !important; font-size: 1rem; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <RadzenIcon Icon="person_add" />
+                    <span>Зареєструватися</span>
+                </button>
+
+            </RadzenStack>
+        </EditForm>
+
+        <!-- Футер -->
+        <div class="text-center mt-4 pt-3" style="border-top: 1px solid rgba(0,0,0,0.05);">
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Вже є акаунт?</p>
+            <RadzenLink Path="/login" Text="Увійти в систему" Style="color: var(--primary-color); font-weight: 600; text-decoration: none;" />
+        </div>
+
     </div>
-</EditForm>
+</div>
+
+<style>
+    /* Локальні стилі для центрування */
+    .register-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 90vh;
+        padding: 20px;
+    }
+
+    .register-card {
+        max-width: 550px !important; /* Трохи ширша картка для форми в дві колонки */
+        padding: 40px !important;
+    }
+</style>
 
 @code {
     private RegisterDto model = new RegisterDto();

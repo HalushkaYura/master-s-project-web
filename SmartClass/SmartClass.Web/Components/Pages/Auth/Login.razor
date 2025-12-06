@@ -1,4 +1,5 @@
 ﻿@page "/login"
+@layout MainLayout
 @using Radzen
 @using SmartClass.Application.Contracts.Auth
 @using SmartClass.Web.Services
@@ -7,45 +8,79 @@
 @inject NavigationManager Navigation
 @inject Radzen.NotificationService Toast
 @inject IJSRuntime JS
+@rendermode InteractiveServer
 
-<EditForm Model="@userLogin" OnValidSubmit="@HandleLogin">
-    <div class="row">
-        <div class="col-md-6 offset-md-3 col-lg-4 offset-lg-4">
-            <section>
-                <h2 class="text-center text-login">Use a local account to log in.</h2>
-                <hr />
-                <div class="form-group m-2">
-                    <label class="text-login">Email</label>
-                    <RadzenTextBox @bind-Value="userLogin.Email" Placeholder="name@example.com" class="form-control" Name="Email" />
-                </div>
-                <div class="form-group m-2">
-                    <label class="text-login">Password</label>
-                    <RadzenPassword @bind-Value="userLogin.Password" Placeholder="Password" class="form-control" Name="Password" />
-                </div>
-                <div class="form-check mb-3 ">
-                    <RadzenCheckBox @bind-Value="rememberMe" class="form-check-input" />
-                    <label class="form-check-label text-login">Remember me</label>
-                </div>
-                <div class="text-center ">
-                    <RadzenButton Text="Log in" ButtonType="ButtonType.Submit" Icon="login" class="btn bg-secondary btn-block" />
-                </div>
-                <div class="text-center mt-3 ">
-                    <RadzenLink Style="color:white" Text="Forgot your password?" Path="/forgot-password" />
-                </div>
-                <div class="text-center ">
-                    <RadzenLink Style="color:white" Text="Register as a new user" Path="/register" />
-                </div>
-                <div class="text-center ">
-                    <RadzenLink Style="color:white" Text="Resend email confirmation" Path="/resend-email-confirmation" />
-                </div>
-            </section>
+<PageTitle>Вхід у систему</PageTitle>
+
+<div class="login-container">
+
+    <div class="glass-card login-card animate-fade-in">
+
+        <!-- Заголовок -->
+        <div class="text-center mb-4">
+            <RadzenImage Path="/logo.png" Style="width: 60px; height: 60px; margin-bottom: 10px;" />
+            <h2 style="color: var(--primary-color); font-weight: 800; margin: 0;">Вхід</h2>
+            <p style="color: var(--text-secondary); font-size: 0.95rem;">Увійдіть, щоб продовжити навчання</p>
         </div>
+
+        <EditForm Model="@userLogin" OnValidSubmit="@HandleLogin">
+            <DataAnnotationsValidator />
+
+            <RadzenStack Gap="1.5rem">
+
+                <!-- Email -->
+                <div>
+                    <RadzenText Text="Електронна пошта" TextStyle="TextStyle.Subtitle2" Style="color: var(--text-main); font-weight: 600; margin-bottom: 4px;" />
+                    <RadzenTextBox @bind-Value="userLogin.Email" Placeholder="name@example.com" Name="Email" Style="width: 100%;" />
+                    <ValidationMessage For="@(() => userLogin.Email)" />
+                </div>
+
+                <!-- Password -->
+                <div>
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center" Style="margin-bottom: 4px;">
+                        <RadzenText Text="Пароль" TextStyle="TextStyle.Subtitle2" Style="color: var(--text-main); font-weight: 600; margin: 0;" />
+                        <RadzenLink Path="/forgot-password" Text="Забули пароль?" Style="font-size: 0.85rem; color: var(--primary-color); text-decoration: none;" />
+                    </RadzenStack>
+                    <RadzenPassword @bind-Value="userLogin.Password" Placeholder="••••••••" Name="Password" Style="width: 100%;" />
+                    <ValidationMessage For="@(() => userLogin.Password)" />
+                </div>
+
+                <!-- Кнопка входу -->
+                <button type="submit" class="btn-primary-custom w-100" style="padding: 12px !important; font-size: 1rem; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <RadzenIcon Icon="login" />
+                    <span>Увійти</span>
+                </button>
+
+            </RadzenStack>
+        </EditForm>
+
+        <!-- Футер -->
+        <div class="text-center mt-4 pt-3" style="border-top: 1px solid rgba(0,0,0,0.05);">
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Ще не маєте акаунту?</p>
+            <RadzenLink Path="/register" Text="Створити акаунт" Style="color: var(--primary-color); font-weight: 600; text-decoration: none;" />
+        </div>
+
     </div>
-</EditForm>
+</div>
+
+<style>
+    /* Локальні стилі для центрування */
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 80vh;
+        padding: 20px;
+    }
+
+    .login-card {
+        max-width: 420px !important; /* Вузька картка для логіну */
+        padding: 40px !important;
+    }
+</style>
 
 @code {
     private LoginDto userLogin = new LoginDto();
-    private bool rememberMe;
 
     private async Task HandleLogin()
     {
@@ -53,17 +88,26 @@
         {
             var tokens = await AuthApi.LoginAsync(userLogin);
 
-            if (tokens == null)
-                throw new Exception("Login failed.");
+            if (tokens is null)
+            {
+                Toast.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Помилка входу",
+                    Detail = "Невірний логін або пароль.",
+                    Duration = 4000
+                });
+                return;
+            }
 
-            // 1) Зберігаємо токени
+            // 1) Зберігаємо токени в localStorage
             await JS.InvokeVoidAsync("localStorage.setItem", "accessToken", tokens.AccessToken);
             await JS.InvokeVoidAsync("localStorage.setItem", "refreshToken", tokens.RefreshToken.Token);
 
-            // 2) Ставимо Bearer
+            // 2) Ставимо Bearer у HttpClient
             AuthApi.SetBearer(tokens.AccessToken);
 
-            // 3) Тягнемо користувача
+            // 3) Тягнемо дані користувача
             var me = await AuthApi.GetCurrentUserAsync();
             if (me != null)
             {
@@ -73,23 +117,22 @@
             Toast.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Success,
-                Summary = "Login successful",
-                Detail = "Welcome back!",
+                Summary = "Вітаємо!",
+                Detail = $"Ви увійшли як {me?.Email}",
                 Duration = 3000
             });
 
-            Navigation.NavigateTo("/");
+            Navigation.NavigateTo("/", forceLoad: true);
         }
         catch (Exception ex)
         {
             Toast.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Error,
-                Summary = "Error",
+                Summary = "Помилка",
                 Detail = ex.Message,
                 Duration = 5000
             });
         }
     }
 }
-

@@ -1,66 +1,291 @@
 ﻿@page "/"
 @using SmartClass.Web.Components.Layout
+@using SmartClass.Web.Components.Pages.Classrooms
 @using SmartClass.Web.Services
+@using Radzen
+@using Radzen.Blazor
+
 @layout MainLayout
 @inject CurrentUserState CurrentUser
 @inject NavigationManager Nav
 @implements IDisposable
+<style>
+    /* Стилі для каруселі */
+    .carousel-slide-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        text-align: center;
+        padding: 0 40px;
+        background: rgba(255,255,255,0.4);
+    }
 
-<PageTitle>Smart Class</PageTitle>
+        .carousel-slide-content h3 {
+            color: var(--primary-color);
+            font-weight: 700;
+            margin: 0 0 10px 0;
+        }
+
+        .carousel-slide-content p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            max-width: 600px;
+        }
+
+    /* Картки переваг */
+    .feature-card {
+        background: rgba(255,255,255,0.5);
+        padding: 24px;
+        border-radius: 16px;
+        text-align: center;
+        height: 100%;
+        transition: transform 0.2s;
+        border: 1px solid rgba(255,255,255,0.6);
+    }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255,255,255,0.8);
+        }
+
+        .feature-card .rz-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: rgba(0, 33, 113, 0.05);
+            padding: 15px;
+            border-radius: 50%;
+        }
+
+        .feature-card h4 {
+            color: var(--text-main);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+    /* Статистичні картки (Дашборд) */
+    .stat-card {
+        background: white;
+        padding: 20px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s;
+    }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px rgba(0,0,0,0.05);
+        }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .stat-value {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--text-main);
+        line-height: 1;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+</style>
+<PageTitle>Smart Class - Головна</PageTitle>
 
 @if (CurrentUser.User is null)
 {
-    <!-- ГІСТЬ / НЕАВТОРИЗОВАНИЙ -->
-    <div class="text-center">
-        <h1>Smart Class</h1>
-        <p class="mt-3" style="font-size:18px; color:#455A64;">
-            Smart Class — це проста мінімалістична платформа для організації навчальних класів,
-            розміщення матеріалів та комунікації між викладачами і студентами.
-        </p>
+    <!-- === ЛЕНДІНГ ДЛЯ ГОСТЕЙ === -->
+    <div class="animate-fade-in">
 
-        <p style="color:#607D8B;">
-            Щоб створювати або відвідувати навчальні класи, увійдіть у систему або зареєструйтесь.
-        </p>
+        <!-- Hero Section -->
+        <div style="text-align: center; margin-bottom: 3rem;">
+            <h1 style="font-size: 3rem; font-weight: 800; color: var(--primary-color); margin-bottom: 1rem; line-height: 1.2;">
+                Навчання без кордонів <br />
+                <span style="color: var(--accent-color);">Організація без хаосу</span>
+            </h1>
+            <p style="font-size: 1.1rem; color: var(--text-secondary); max-width: 600px; margin: 0 auto 2rem auto;">
+                Smart Class — це сучасна платформа для викладачів та студентів.
+                Створюйте класи, діліться матеріалами та спілкуйтеся в реальному часі.
+            </p>
 
-        <div class="mt-4">
-            <RadzenButton Text="Увійти"
-                          Style="margin-right: 10px; min-width:140px;"
-                          ButtonStyle="ButtonStyle.Primary"
-                          Click="@(() => Nav.NavigateTo("/login"))" />
-            <RadzenButton Text="Зареєструватися"
-                          Variant="Variant.Outlined"
-                          ButtonStyle="ButtonStyle.Primary"
-                          Style="min-width:160px;"
-                          Click="@(() => Nav.NavigateTo("/register"))" />
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="1rem">
+                <RadzenButton Text="Почати навчання" Class="btn-primary-custom" Style="padding: 12px 32px; font-size: 1.1rem;" Click="@(() => Nav.NavigateTo("/register"))" />
+                <RadzenButton Text="Увійти" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Primary" Style="padding: 12px 32px; border-radius: 10px; font-weight: 600;" Click="@(() => Nav.NavigateTo("/login"))" />
+            </RadzenStack>
         </div>
+
+        <!-- Carousel: Можливості -->
+        <div style="margin-bottom: 4rem;">
+            <RadzenText Text="Чому обирають Smart Class?" TextStyle="TextStyle.H4" TextAlign="TextAlign.Center" Style="color: var(--text-main); font-weight: 700; margin-bottom: 20px;" />
+
+            <RadzenCarousel Loop="true" AutoPlay="true" Interval="5000" ButtonStyle="ButtonStyle.Light" Style="height: 300px; background: transparent; border-radius: 16px; box-shadow: var(--glass-shadow);">
+                <Items>
+                    <!-- Слайд 1 -->
+                    <RadzenCarouselItem>
+                        <div class="carousel-slide-content">
+                            <RadzenIcon Icon="school" Style="font-size: 4rem; color: var(--primary-color); margin-bottom: 1rem;" />
+                            <h3>Керування класами</h3>
+                            <p>Легко створюйте віртуальні класи, додавайте студентів за кодом та керуйте розкладом в одному місці.</p>
+                        </div>
+                    </RadzenCarouselItem>
+                    <!-- Слайд 2 -->
+                    <RadzenCarouselItem>
+                        <div class="carousel-slide-content">
+                            <RadzenIcon Icon="forum" Style="font-size: 4rem; color: var(--accent-color); margin-bottom: 1rem;" />
+                            <h3>Живе спілкування</h3>
+                            <p>Вбудований чат для кожного класу. Обговорюйте завдання, ставте питання та отримуйте відповіді миттєво.</p>
+                        </div>
+                    </RadzenCarouselItem>
+                    <!-- Слайд 3 -->
+                    <RadzenCarouselItem>
+                        <div class="carousel-slide-content">
+                            <RadzenIcon Icon="folder_shared" Style="font-size: 4rem; color: #00b0a6; margin-bottom: 1rem;" />
+                            <h3>Матеріали та Завдання</h3>
+                            <p>Завантажуйте лекції, презентації та домашні завдання. Все зберігається структуровано та безпечно.</p>
+                        </div>
+                    </RadzenCarouselItem>
+                </Items>
+            </RadzenCarousel>
+        </div>
+
+        <!-- Features Grid -->
+        <RadzenRow Gap="2rem">
+            <RadzenColumn Size="12" SizeMD="4">
+                <div class="feature-card">
+                    <RadzenIcon Icon="speed" Style="color: var(--primary-color);" />
+                    <h4>Швидкість</h4>
+                    <p>Миттєве завантаження сторінок та оновлення даних у реальному часі завдяки технології Blazor.</p>
+                </div>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="4">
+                <div class="feature-card">
+                    <RadzenIcon Icon="security" Style="color: var(--primary-color);" />
+                    <h4>Безпека</h4>
+                    <p>Ваші дані захищені сучасними протоколами шифрування. Тільки учасники класу мають доступ до матеріалів.</p>
+                </div>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="4">
+                <div class="feature-card">
+                    <RadzenIcon Icon="devices" Style="color: var(--primary-color);" />
+                    <h4>Адаптивність</h4>
+                    <p>Працюйте з будь-якого пристрою: ноутбука, планшета чи смартфона. Інтерфейс підлаштується під вас.</p>
+                </div>
+            </RadzenColumn>
+        </RadzenRow>
+
     </div>
 }
 else
 {
-    <!-- АВТОРИЗОВАНИЙ КОРИСТУВАЧ -->
-    <div>
-        <h2>Вітаємо в Smart Class 👋</h2>
-        <p class="mt-2" style="color:#607D8B;">
-            Тут ви можете керувати своїми навчальними класами, матеріалами та завданнями.
-        </p>
+    <!-- === ДАШБОРД ДЛЯ АВТОРИЗОВАНИХ === -->
+    <div class="animate-fade-in">
 
-        <RadzenAlert Style="margin-top: 16px; background-color:#E3F2FD; border:none; color:#0D47A1;">
-            Використовуйте меню зліва для переходу до списку класів, повідомлень або профілю.
-            Кнопки <b>“Створити клас”</b> і <b>“Приєднатися до класу”</b> доступні у верхній панелі.
-        </RadzenAlert>
+        <!-- Welcome Header -->
+        <div style="margin-bottom: 30px;">
+            <RadzenText Text="@($"Вітаємо, {CurrentUser.User?.Firstname} 👋")" Style="color: var(--primary-color); font-size: 2rem; font-weight: 700; margin: 0;" />
+            <RadzenText Text="Ось огляд вашої активності на сьогодні." Style="color: var(--text-secondary);" />
+        </div>
+
+        <!-- Stats Cards (Placeholders for now) -->
+        <RadzenRow Gap="1.5rem" Style="margin-bottom: 2rem;">
+            <RadzenColumn Size="12" SizeMD="4">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background-color: rgba(66, 165, 245, 0.1); color: var(--accent-color);">
+                        <RadzenIcon Icon="class" />
+                    </div>
+                    <div>
+                        <span class="stat-value">--</span> <!-- Тут можна вивести real count -->
+                        <span class="stat-label">Активні класи</span>
+                    </div>
+                </div>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeMD="4">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background-color: rgba(255, 152, 0, 0.1); color: #f57c00;">
+                        <RadzenIcon Icon="assignment" />
+                    </div>
+                    <div>
+                        <span class="stat-value">0</span>
+                        <span class="stat-label">Нові завдання</span>
+                    </div>
+                </div>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeMD="4">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background-color: rgba(76, 175, 80, 0.1); color: #2e7d32;">
+                        <RadzenIcon Icon="notifications" />
+                    </div>
+                    <div>
+                        <span class="stat-value">0</span>
+                        <span class="stat-label">Повідомлення</span>
+                    </div>
+                </div>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <!-- Quick Actions Banner -->
+        <div style="background: linear-gradient(90deg, #f8fafc 0%, #eef2ff 100%); border-radius: 16px; padding: 30px; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
+            <div>
+                <h3 style="margin: 0; color: var(--text-main); font-size: 1.25rem;">Швидкий старт</h3>
+                <p style="margin: 5px 0 0 0; color: var(--text-secondary);">Почніть роботу, створивши новий клас або приєднавшись до існуючого.</p>
+            </div>
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="10px">
+                @if (IsTeacher)
+                {
+                    <RadzenButton Text="Створити клас" Icon="add" Class="btn-primary-custom" Click="@(() => DialogService.OpenAsync<ClassroomCreateDialog>("Створити", null))" />
+                }
+                <RadzenButton Text="Знайти клас" Icon="search" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Style="border-radius: 10px; font-weight: 600;" Click="@(() => DialogService.OpenAsync<JoinClassroomDialog>("Приєднатися", null))" />
+            </RadzenStack>
+        </div>
+
+        <!-- Recent Activity Placeholder -->
+        <div style="margin-top: 2rem;">
+            <h3 style="color: var(--text-main); font-size: 1.1rem; margin-bottom: 1rem;">Останні оновлення</h3>
+            <div style="padding: 20px; text-align: center; color: var(--text-muted); border: 2px dashed #cbd5e1; border-radius: 12px;">
+                <RadzenIcon Icon="history" Style="margin-bottom: 10px; font-size: 1.5rem;" />
+                <p>Тут з'являтимуться останні події з ваших класів.</p>
+            </div>
+        </div>
+
     </div>
 }
 
+
+
 @code {
+    [Inject] public DialogService DialogService { get; set; } = default!;
+
+    private bool IsTeacher =>
+        CurrentUser.User?.Roles?.Any(r =>
+            string.Equals(r, "Teacher", StringComparison.OrdinalIgnoreCase) ||
+            r.Contains("викладач", StringComparison.OrdinalIgnoreCase)
+        ) == true;
+
     protected override void OnInitialized()
     {
-        // Підписуємося на зміну стану користувача
         CurrentUser.OnChange += HandleUserStateChanged;
     }
 
     private void HandleUserStateChanged()
     {
-        // Перерендерити компонент, коли логін/логаут
         InvokeAsync(StateHasChanged);
     }
 
