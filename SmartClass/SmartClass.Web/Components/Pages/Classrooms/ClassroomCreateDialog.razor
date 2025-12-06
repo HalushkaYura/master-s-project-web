@@ -1,0 +1,100 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using SmartClass.Application.Contracts.Classrooms
+@using SmartClass.Application.Abstractions
+@using SmartClass.Web.Services
+
+@inject Radzen.NotificationService Toast
+@inject Radzen.DialogService DialogService
+@inject IClassroomService ClassroomService
+@inject CurrentUserState CurrentUser
+
+<EditForm Model="@vm" OnValidSubmit="@HandleSubmit">
+    <DataAnnotationsValidator />
+
+    <RadzenFieldset Style="border:none; padding-left:0;">
+        <RadzenLabel Text="Назва класу" Component="Title" Style="font-weight:600; color:#0B2E6F;" />
+        <RadzenTextBox @bind-Value="vm.Title" Name="Title" Placeholder="Напр. '10-А Інформатика'" Style="width:100%; margin-bottom:6px;" />
+        <ValidationMessage For="@(() => vm.Title)" />
+
+        <RadzenLabel Text="Секція / група" Component="Section" Style="font-weight:600; color:#0B2E6F; margin-top:10px;" />
+        <RadzenTextBox @bind-Value="vm.Section" Name="Section" Placeholder="Напр. 'Алгебра'" Style="width:100%; margin-bottom:6px;" />
+
+        <RadzenLabel Text="Опис" Component="Description" Style="font-weight:600; color:#0B2E6F; margin-top:10px;" />
+        <RadzenTextArea @bind-Value="vm.Description" Name="Description" Rows="3" Placeholder="Короткий опис" Style="width:100%; margin-bottom:16px;" />
+    </RadzenFieldset>
+
+    <div class="d-flex justify-content-end">
+        <RadzenButton Text="Створити" Icon="add" ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" IsBusy="@isBusy" />
+        <RadzenButton Text="Скасувати" Icon="close" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Click="@(() => DialogService.Close(false))" Disabled="@isBusy" />
+    </div>
+</EditForm>
+
+@code {
+    private CreateClassroomVm vm = new();
+    private bool isBusy = false;
+
+    private async Task HandleSubmit()
+    {
+        isBusy = true;
+
+        try
+        {
+            if (CurrentUser.User is null)
+            {
+                ShowError("Ви не авторизовані.");
+                return;
+            }
+
+            var userIdStr = CurrentUser.User.UserId;
+            if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                ShowError("ID користувача недійсний.");
+                return;
+            }
+
+            var dto = new CreateClassroomDto(
+                Title: vm.Title,
+                Section: vm.Section,
+                Description: vm.Description
+            );
+
+            await ClassroomService.CreateClassroomAsync(dto, userId);
+
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Успіх",
+                Detail = "Клас створено!"
+            });
+
+            DialogService.Close(true);
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex.Message);
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private void ShowError(string message)
+    {
+        Toast.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Error,
+            Summary = "Помилка",
+            Detail = message,
+            Duration = 5000
+        });
+    }
+
+    private sealed class CreateClassroomVm
+    {
+        [Required(ErrorMessage = "Назва обов'язкова")]
+        public string Title { get; set; } = string.Empty;
+        public string? Section { get; set; }
+        public string? Description { get; set; }
+    }
+}

@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using SmartClass.Application.Abstractions;
 using SmartClass.Application.Contracts.Auth;
+using SmartClass.Infrastructure.Options;
 
 namespace SmartClass.Web.Controllers
 {
@@ -10,18 +12,26 @@ namespace SmartClass.Web.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService authService;
+        private readonly JwtOptions jwtOptions;
 
-        public AuthController(IAuthService authService)
+        public AuthController(
+            IAuthService authService,
+            IOptions<JwtOptions> jwtOptions)
         {
             this.authService = authService;
+            this.jwtOptions = jwtOptions.Value;
         }
 
         [HttpPost("register")]
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterDto request, CancellationToken ct)
         {
-            var result = await authService.RegisterAsync(request, ct);
-            return Ok(result);
+            var tokens = await authService.RegisterAsync(request, ct);
+
+            SetAuthCookies(tokens);
+
+            // Якщо на фронті токени більше не потрібні – достатньо Ok()
+            return Ok(tokens);
         }
 
         [HttpPost("login")]
@@ -30,8 +40,11 @@ namespace SmartClass.Web.Controllers
         {
             try
             {
-                var result = await authService.LoginAsync(request, ct);
-                return Ok(result);
+                var tokens = await authService.LoginAsync(request, ct);
+
+                SetAuthCookies(tokens);
+
+                return Ok(tokens); // або Ok() – якщо клієнт не використовує токени напряму
             }
             catch (InvalidOperationException ex)
             {
@@ -43,8 +56,11 @@ namespace SmartClass.Web.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Refresh([FromBody] RefreshDto request, CancellationToken ct)
         {
-            var result = await authService.RefreshAsync(request, ct);
-            return Ok(result);
+            var tokens = await authService.RefreshAsync(request, ct);
+
+            SetAuthCookies(tokens);
+
+            return Ok(tokens);
         }
 
         [HttpPost("logout")]
@@ -52,31 +68,66 @@ namespace SmartClass.Web.Controllers
         public async Task<IActionResult> Logout([FromBody] LogoutDto request, CancellationToken ct)
         {
             await authService.LogoutAsync(request, ct);
+
+            ClearAuthCookies();
+
             return NoContent();
         }
 
+        // ---------- ДОПОМІЖНІ МЕТОДИ ДЛЯ КУКІ ----------
 
+        private void SetAuthCookies(TokenPairDto tokens)
+        {
+            // accessToken cookie
+            Response.Cookies.Append(
+                "accessToken",
+                tokens.AccessToken,
+                new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    // Використовуємо JwtOptions, а не "60"
+                    Expires = DateTimeOffset.UtcNow.AddMinutes(jwtOptions.AccessTokenMinutes)
+                });
 
+            // refreshToken cookie
+            Response.Cookies.Append(
+                "refreshToken",
+                tokens.RefreshToken.Token,
+                new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    // Тут логічно ставити те саме, що в самому токені
+                    Expires = tokens.RefreshToken.ExpiresAt
+                });
+        }
 
+        private void ClearAuthCookies()
+        {
+            Response.Cookies.Delete("accessToken");
+            Response.Cookies.Delete("refreshToken");
+        }
 
+        // ---------- ДОДАТКОВІ СЕРВІСНІ ЕНДПОІНТИ ----------
 
-        [HttpGet]
+        [HttpGet("IsAuthenticated")]
         [Authorize]
-        [Route("IsAuthenticated")]
-        public IActionResult IsAuthenticated() => Ok(User.Identity.IsAuthenticated);
+        public IActionResult IsAuthenticated()
+            => Ok(User.Identity?.IsAuthenticated ?? false);
 
-        [HttpGet]
-        [Route("UserIdAuthenticated")]
-        [Authorize] 
+        [HttpGet("UserIdAuthenticated")]
+        [Authorize]
         public IActionResult UserIdAuthenticated()
         {
-            // Отримуємо ID користувача (ClaimsPrincipal.Identity)
-            // ID користувача зазвичай зберігається у клеймі (claim) NameIdentifier.
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var userId =
+                User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ??
+                User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
 
             if (string.IsNullOrEmpty(userId))
             {
-                // Хоча користувач авторизований, ID може бути відсутній
                 return Unauthorized("User ID claim not found.");
             }
 

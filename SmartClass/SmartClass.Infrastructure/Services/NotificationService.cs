@@ -3,7 +3,7 @@ using SmartClass.Domain.Entities;
 using SmartClass.Infrastructure.Persistence;
 using System.Text.Json;
 
-namespace SmartClass.Infrastructure.Notifications;
+namespace SmartClass.Infrastructure.Services;
 
 public sealed class NotificationService : INotificationService
 {

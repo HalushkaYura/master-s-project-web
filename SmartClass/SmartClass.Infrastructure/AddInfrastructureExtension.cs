@@ -8,12 +8,11 @@ using SmartClass.Application.Abstractions;
 using SmartClass.Application.Abstractions.Storage;
 using SmartClass.Application.Options;
 using SmartClass.Infrastructure.Files;
+using SmartClass.Infrastructure.Helpers.Mapping;
 using SmartClass.Infrastructure.Identity.Entities;
-using SmartClass.Infrastructure.Identity.Services;
-using SmartClass.Infrastructure.Mapping;
-using SmartClass.Infrastructure.Notifications;
 using SmartClass.Infrastructure.Options;
 using SmartClass.Infrastructure.Persistence;
+using SmartClass.Infrastructure.Services;
 using System.Text;
 
 namespace SmartClass.Infrastructure;
@@ -45,26 +44,46 @@ public static class AddInfrastructureExtension
         .AddSignInManager();
 
         services.Configure<JwtOptions>(configuration.GetSection("Jwt"));
+
         var jwt = configuration.GetSection("Jwt").Get<JwtOptions>()!;
+
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key));
+
         services
-            .AddAuthentication(o =>
+            .AddAuthentication(options =>
             {
-                o.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                o.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             })
-            .AddJwtBearer(o =>
+            .AddJwtBearer(options =>
             {
-                o.TokenValidationParameters = new TokenValidationParameters
+                options.RequireHttpsMetadata = true;
+                options.SaveToken = false;
+
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    ValidIssuer = jwt.Issuer,
-                    ValidAudience = jwt.Audience,
-                    IssuerSigningKey = key,
                     ValidateIssuer = true,
+                    ValidIssuer = jwt.Issuer,
                     ValidateAudience = true,
-                    ValidateLifetime = true,
+                    ValidAudience = jwt.Audience,
                     ValidateIssuerSigningKey = true,
-                    ClockSkew = TimeSpan.FromMinutes(1)
+                    IssuerSigningKey = key,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                };
+
+                // ГОЛОВНЕ: читаємо токен з cookie "accessToken"
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = ctx =>
+                    {
+                        if (ctx.Request.Cookies.TryGetValue("accessToken", out var token))
+                        {
+                            ctx.Token = token;
+                        }
+
+                        return Task.CompletedTask;
+                    }
                 };
             });
 
@@ -73,6 +92,8 @@ public static class AddInfrastructureExtension
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IClassroomService, ClassroomService>();
+
         services.AddAutoMapper(cfg => cfg.AddProfile<ApplicationProfile>());
 
         return services;

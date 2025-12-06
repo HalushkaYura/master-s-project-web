@@ -5,7 +5,7 @@ namespace SmartClass.Application.Abstractions
 {
     public interface IUserService
     {
-        Task<UserInfoDto> UserInfoAsync(string userId);
+        Task<UserInfoDTO> UserInfoAsync(string userId);
         Task EditUserDateAsync(UserEditDTO userEditDTO, string userId);
         //Task<List<UserInviteInfoDTO>> GetUserInviteInfoListAsync(string userId);
         //Task<UserActiveInviteDTO> IsActiveInviteAsync(string userId);

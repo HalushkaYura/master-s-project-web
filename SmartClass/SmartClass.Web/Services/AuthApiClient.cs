@@ -1,73 +1,66 @@
-﻿using System.Net.Http.Headers;
+﻿using SmartClass.Application.Contracts.Auth;
+using SmartClass.Application.Contracts.User;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using SmartClass.Application.Contracts.Auth;
 
 namespace SmartClass.Web.Services
 {
     public class AuthApiClient
     {
-        private readonly HttpClient httpClient;
+        private readonly HttpClient _httpClient;
 
         public AuthApiClient(HttpClient httpClient)
         {
-            this.httpClient = httpClient;
+            _httpClient = httpClient;
         }
 
-        public async Task<TokenPairDto?> RegisterAsync(RegisterDto dto, CancellationToken ct = default)
+        public void SetBearer(string? accessToken)
         {
-            // POST https://{BaseAddress}/api/Auth/register
-            var response = await httpClient.PostAsJsonAsync("api/Auth/register", dto, ct);
-            if (!response.IsSuccessStatusCode) return null;
-
-            return await response.Content.ReadFromJsonAsync<TokenPairDto>(cancellationToken: ct);
-        }
-
-        public async Task<TokenPairDto?> LoginAsync(LoginDto dto, CancellationToken ct = default)
-        {
-            var response = await httpClient.PostAsJsonAsync("api/Auth/login", dto, ct);
-
-            if (!response.IsSuccessStatusCode)
+            if (string.IsNullOrWhiteSpace(accessToken))
             {
-                var errorText = await response.Content.ReadAsStringAsync(ct);
-                // тут API повертає { "message": "Invalid login or password." }
-                throw new InvalidOperationException(errorText);
-            }
-
-            return await response.Content.ReadFromJsonAsync<TokenPairDto>(cancellationToken: ct);
-        }
-
-
-
-        public async Task<TokenPairDto?> RefreshAsync(RefreshDto dto, CancellationToken ct = default)
-        {
-            var response = await httpClient.PostAsJsonAsync("api/Auth/refresh", dto, ct);
-            if (!response.IsSuccessStatusCode) return null;
-
-            return await response.Content.ReadFromJsonAsync<TokenPairDto>(cancellationToken: ct);
-        }
-
-        /// <summary>
-        /// Отримання поточного користувача (треба реалізувати ендпойнт /api/Auth/me)
-        /// </summary>
-        public async Task<UserInfoDto?> GetCurrentUserAsync(CancellationToken ct = default)
-        {
-            var response = await httpClient.GetAsync("api/User/info", ct);
-            if (!response.IsSuccessStatusCode) return null;
-
-            return await response.Content.ReadFromJsonAsync<UserInfoDto>(cancellationToken: ct);
-        }
-
-        public void SetBearer(string? token)
-        {
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                httpClient.DefaultRequestHeaders.Authorization = null;
+                _httpClient.DefaultRequestHeaders.Authorization = null;
             }
             else
             {
-                httpClient.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", token);
+                _httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", accessToken);
             }
+        }
+
+        public async Task<TokenPairDto?> LoginAsync(LoginDto dto)
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/auth/login", dto);
+            if (!response.IsSuccessStatusCode)
+                throw new Exception(await response.Content.ReadAsStringAsync());
+
+            return await response.Content.ReadFromJsonAsync<TokenPairDto>();
+        }
+
+        public async Task<TokenPairDto?> RegisterAsync(RegisterDto dto)
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/auth/register", dto);
+            if (!response.IsSuccessStatusCode)
+                throw new Exception(await response.Content.ReadAsStringAsync());
+
+            return await response.Content.ReadFromJsonAsync<TokenPairDto>();
+        }
+
+        public async Task<UserInfoDTO?> GetCurrentUserAsync()
+        {
+            // маєш зробити відповідний API-метод на бекенді (наприклад /api/user/me)
+            var response = await _httpClient.GetAsync("api/user/info");
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<UserInfoDTO>();
+        }
+
+        // за бажанням можна додати RefreshAsync і LogoutAsync
+
+        // Add this method to fix CS1061
+        public async Task LogoutAsync(LogoutDto dto)
+        {
+            await _httpClient.PostAsJsonAsync("api/auth/logout", dto);
         }
     }
 }

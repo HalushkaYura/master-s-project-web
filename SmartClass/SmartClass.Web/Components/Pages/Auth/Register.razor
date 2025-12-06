@@ -64,7 +64,7 @@
 
 @code {
     private RegisterDto model = new RegisterDto();
-    
+
     private List<RoleOption> roles = new()
     {
         new RoleOption { Text = "Student", Value = "Student" },
@@ -88,12 +88,14 @@
                 return;
             }
 
-            // Зберігаємо токени в localStorage
+            // 1) Зберігаємо токени в localStorage
             await JS.InvokeVoidAsync("localStorage.setItem", "accessToken", tokens.AccessToken);
             await JS.InvokeVoidAsync("localStorage.setItem", "refreshToken", tokens.RefreshToken.Token);
 
-            // Підтягуємо поточного користувача
+            // 2) Ставимо Bearer у HttpClient
             AuthApi.SetBearer(tokens.AccessToken);
+
+            // 3) Тягнемо дані користувача
             var me = await AuthApi.GetCurrentUserAsync();
             if (me != null)
             {
@@ -108,7 +110,6 @@
                 Duration = 3000
             });
 
-            await Task.Delay(500);
             Navigation.NavigateTo("/");
         }
         catch (Exception ex)

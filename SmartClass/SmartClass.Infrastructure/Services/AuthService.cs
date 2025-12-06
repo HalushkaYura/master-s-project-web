@@ -5,7 +5,7 @@ using SmartClass.Application.Contracts.Auth;
 using SmartClass.Infrastructure.Identity.Entities;
 using SmartClass.Infrastructure.Persistence;
 
-namespace SmartClass.Infrastructure.Identity.Services
+namespace SmartClass.Infrastructure.Services
 {
     public class AuthService : IAuthService
     {
@@ -118,17 +118,23 @@ namespace SmartClass.Infrastructure.Identity.Services
             if (!Guid.TryParse(request.UserId, out var userId))
                 throw new InvalidOperationException("Invalid user id.");
 
-            var tokens = await db.RefreshTokens
-                .Where(x => x.UserId == userId && x.Token == request.RefreshToken && !x.IsRevoked)
-                .ToListAsync(ct);
+            if (string.IsNullOrWhiteSpace(request.RefreshToken))
+                return;
 
-            if (!tokens.Any()) return;
+            var tokenEntity = await db.RefreshTokens
+                .FirstOrDefaultAsync(x =>
+                    x.UserId == userId &&
+                    x.Token == request.RefreshToken &&
+                    !x.IsRevoked,
+                    ct);
 
-            foreach (var t in tokens)
-                t.IsRevoked = true;
+            if (tokenEntity is null)
+                return;
 
+            tokenEntity.IsRevoked = true;
             await db.SaveChangesAsync(ct);
         }
+
 
         public Task<TokenPairDto> RefreshAsync(RefreshDto request, CancellationToken ct)
             => jwtService.RefreshTokensAsync(request.UserId, request.RefreshToken, ct);

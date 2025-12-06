@@ -1,0 +1,171 @@
+﻿@page "/chat/{ChannelId:guid}"
+@layout MainLayout
+@using Microsoft.AspNetCore.SignalR.Client
+@using SmartClass.Web.Components.Layout
+@using SmartClass.Web.Services
+@inject NavigationManager Nav
+@inject HttpClient Http
+@inject Radzen.NotificationService Toast
+@inject CurrentUserState CurrentUser
+
+<PageTitle>Class chat</PageTitle>
+
+<h2>Class chat</h2>
+<RadzenText Text="Chat with participants of this classroom."
+            Style="color:#607D8B; margin-bottom:12px; display:block;" />
+
+@if (!isConnected)
+{
+    <RadzenAlert Severity="AlertSeverity.Info">
+        Connecting to chat...
+    </RadzenAlert>
+}
+
+<div style="border-radius:12px; border:1px solid #CFD8DC; padding:12px; background-color:#FAFAFA; max-height:500px; overflow-y:auto; margin-bottom:12px;">
+    @if (messages.Count == 0)
+    {
+        <div style="color:#90A4AE;">No messages yet. Be the first to say hello 👋</div>
+    }
+    else
+    {
+        @foreach (var m in messages.OrderBy(x => x.CreatedAt))
+        {
+            var isMine = CurrentUser.User != null && CurrentUser.User.UserId == m.AuthorId.ToString();
+
+            <div style="margin-bottom:8px; display:flex; @(isMine ? "justify-content:flex-end" : "justify-content:flex-start")">
+                <div style="max-width:70%; padding:8px 10px; border-radius:10px;
+                                    background-color:@(isMine ? "#0B63CE" : "#ECEFF1");
+                                    color:@(isMine ? "white" : "#263238"); font-size:14px;">
+                    @if (!isMine)
+                    {
+                        <div style="font-size:11px; font-weight:600; color:#455A64;">
+                            @(!string.IsNullOrWhiteSpace(m.AuthorName) ? m.AuthorName : "ApplicationUser")
+                        </div>
+                    }
+                    <div>@m.Text</div>
+                    <div style="font-size:10px; color:@(isMine ? "rgba(255,255,255,0.8)" : "#90A4AE"); text-align:right;">
+                        @m.CreatedAt.ToLocalTime().ToShortTimeString()
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<EditForm Model="@inputModel" OnValidSubmit="@SendMessage">
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+        <RadzenTextBox @bind-Value="inputModel.Text"
+                       Placeholder="Type a message..."
+                       Style="flex:1; min-height:38px;" />
+        <RadzenButton Icon="send"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Style="background-color:#0B63CE; border:none;"
+                      ButtonType="ButtonType.Submit" />
+    </RadzenStack>
+</EditForm>
+
+@code {
+    [Parameter] public Guid ChannelId { get; set; }
+
+    private HubConnection? hubConnection;
+    private bool isConnected = false;
+    private List<ChatMessageDto> messages = new();
+
+    private MessageInput inputModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // 1) Підтягнути історію (⚠️ реалізуй endpoint api/messages/channel/{ChannelId})
+            var history = await Http.GetFromJsonAsync<List<ChatMessageDto>>($"api/messages/channel/{ChannelId}");
+            if (history != null)
+            {
+                messages = history;
+            }
+
+            // 2) Створити SignalR-з'єднання
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(Nav.ToAbsoluteUri("/hubs/chat"))
+                .Build();
+
+            hubConnection.On<ChatMessageDto>("ReceiveMessage", msg =>
+            {
+                messages.Add(msg);
+                InvokeAsync(StateHasChanged);
+            });
+
+            await hubConnection.StartAsync();
+            await hubConnection.InvokeAsync("JoinChannel", ChannelId);
+
+            isConnected = true;
+        }
+        catch (Exception ex)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Chat connection error",
+                Detail = ex.Message,
+                Duration = 4000
+            });
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(inputModel.Text))
+            return;
+
+        try
+        {
+            var dto = new
+            {
+                ChannelId = ChannelId,
+                Text = inputModel.Text
+            };
+
+            // ⚠️ Використовуємо API: POST api/messages/send (який ми описували раніше)
+            var response = await Http.PostAsJsonAsync("api/messages/send", dto);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await response.Content.ReadAsStringAsync();
+                Toast.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Send failed",
+                    Detail = err,
+                    Duration = 3000
+                });
+            }
+            else
+            {
+                inputModel.Text = string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = ex.Message,
+                Duration = 3000
+            });
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection != null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+
+    private sealed class MessageInput
+    {
+        public string Text { get; set; } = string.Empty;
+    }
+}

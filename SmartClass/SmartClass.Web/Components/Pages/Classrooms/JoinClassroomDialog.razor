@@ -1,0 +1,84 @@
+﻿@using System.ComponentModel.DataAnnotations
+@inject HttpClient Http
+@inject Radzen.NotificationService Toast
+@inject Radzen.DialogService DialogService
+
+<EditForm Model="@vm" OnValidSubmit="@HandleSubmit">
+    <DataAnnotationsValidator />
+
+    <RadzenFieldset Style="border:none; padding-left:0;">
+        <RadzenLabel Text="Код приєднання" Component="JoinCode" Style="font-weight:600; color:#0B2E6F;" />
+        <RadzenTextBox @bind-Value="vm.JoinCode"
+                       Name="JoinCode"
+                       Placeholder="Введіть код від викладача"
+                       Style="width:100%; margin-bottom:6px;" />
+        <ValidationMessage For="@(() => vm.JoinCode)" />
+    </RadzenFieldset>
+
+    <div class="d-flex justify-content-end">
+        <RadzenButton Text="Приєднатися"
+                      Icon="login"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Style="background-color:#0B63CE; border:none; margin-right:8px;"
+                      ButtonType="ButtonType.Submit" />
+
+        <RadzenButton Text="Скасувати"
+                      Icon="close"
+                      ButtonStyle="ButtonStyle.Secondary"
+                      Variant="Variant.Outlined"
+                      Click="@(() => DialogService.Close(false))" />
+    </div>
+</EditForm>
+
+@code {
+    private JoinClassVm vm = new();
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/classroom/join", vm);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Toast.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Приєднано до класу",
+                    Detail = "Тепер ви учасник класу.",
+                    Duration = 3000
+                });
+
+                DialogService.Close(true);
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+
+                Toast.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Не вдалося приєднатися",
+                    Detail = error,
+                    Duration = 4000
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Помилка",
+                Detail = ex.Message,
+                Duration = 4000
+            });
+        }
+    }
+
+    private sealed class JoinClassVm
+    {
+        [Required(ErrorMessage = "Введіть код приєднання")]
+        public string JoinCode { get; set; } = string.Empty;
+    }
+}

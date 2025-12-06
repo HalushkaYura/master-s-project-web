@@ -1,11 +1,13 @@
-﻿@using SmartClass.Web.Components.Shared
-<Router AppAssembly="typeof(Program).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
-    </Found>
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using SmartClass.Web.Components.Shared
+
+    <Router AppAssembly="typeof(Program).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
         <NotFound>
-        <PageTitle>Not found</PageTitle>
-        <NotFound />
-    </NotFound>
-</Router>
+            <PageTitle>Not found</PageTitle>
+            <NotFound />
+        </NotFound>
+    </Router>

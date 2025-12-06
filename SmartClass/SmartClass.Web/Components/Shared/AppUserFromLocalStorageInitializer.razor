@@ -1,0 +1,62 @@
+﻿@using SmartClass.Web.Services
+@using SmartClass.Application.Contracts.Auth
+@inject IJSRuntime JS
+@inject AuthApiClient AuthApi
+@inject CurrentUserState CurrentUser
+
+@code {
+    private bool _initialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _initialized)
+            return;
+
+        _initialized = true;
+
+        try
+        {
+            var accessToken = await JS.InvokeAsync<string?>("localStorage.getItem", "accessToken");
+            if (string.IsNullOrWhiteSpace(accessToken))
+            {
+                // немає токена -> гість
+                CurrentUser.Clear(); // або MarkInitialized(), якщо не хочеш чистити стан
+                return;
+            }
+
+            AuthApi.SetBearer(accessToken);
+
+            var me = await AuthApi.GetCurrentUserAsync();
+            if (me != null)
+            {
+                var refreshToken = await JS.InvokeAsync<string?>("localStorage.getItem", "refreshToken") ?? "";
+
+                var tokenPair = new TokenPairDto(
+                    accessToken,
+                    new RefreshTokenDto(
+                        refreshToken,
+                        DateTime.UtcNow.AddDays(7) // тут дата не критична, просто щоб не було default
+                    )
+                );
+
+                CurrentUser.SetAuth(tokenPair, me);
+            }
+            else
+            {
+                // токен не валідний / юзер не знайдений
+                CurrentUser.Clear();
+            }
+        }
+        catch
+        {
+            // У разі помилки краще явно скинути до гостя,
+            // щоб не висіти в "вічному лоадингу"
+            CurrentUser.Clear();
+        }
+        finally
+        {
+            // Якщо десь вище не викликали, гарантуємо, що стан ініціалізований
+            CurrentUser.MarkInitialized();
+        }
+    }
+}

@@ -52,24 +52,24 @@
         try
         {
             var tokens = await AuthApi.LoginAsync(userLogin);
-            if (tokens == null)
-                throw new Exception("Login failed: empty token response");
 
-            // 1. Зберегти токени в localStorage
+            if (tokens == null)
+                throw new Exception("Login failed.");
+
+            // 1) Зберігаємо токени
             await JS.InvokeVoidAsync("localStorage.setItem", "accessToken", tokens.AccessToken);
             await JS.InvokeVoidAsync("localStorage.setItem", "refreshToken", tokens.RefreshToken.Token);
 
-            // 2. Поставити Bearer у HttpClient, який використовує AuthApiClient
+            // 2) Ставимо Bearer
             AuthApi.SetBearer(tokens.AccessToken);
 
-            // 3. Отримати поточного користувача з api/User/info
+            // 3) Тягнемо користувача
             var me = await AuthApi.GetCurrentUserAsync();
             if (me != null)
             {
                 CurrentUser.SetAuth(tokens, me);
             }
 
-            // 4. Тост
             Toast.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Success,
@@ -78,7 +78,6 @@
                 Duration = 3000
             });
 
-            // 5. Перейти на головну
             Navigation.NavigateTo("/");
         }
         catch (Exception ex)
@@ -92,5 +91,5 @@
             });
         }
     }
-
 }
+

@@ -8,7 +8,6 @@
 @inject CurrentUserState CurrentUser
 @inject NavigationManager NavigationManager
 
-@attribute [Authorize]
 
 <RadzenContent Container="main">
     <RadzenHeading Size="H2"
@@ -61,7 +60,7 @@
 </RadzenContent>
 
 @code {
-    private UserInfoDto? userInfo;
+    private UserInfoDTO? userInfo;
 
     protected override void OnInitialized()
     {

@@ -1,0 +1,213 @@
+﻿@page "/classrooms"
+@layout MainLayout
+
+@using SmartClass.Application.Abstractions
+@using SmartClass.Application.Contracts.Classrooms
+@using SmartClass.Web.Services
+@using Radzen
+
+@inject NavigationManager Nav
+@inject CurrentUserState CurrentUser
+@inject DialogService DialogService
+@inject Radzen.NotificationService Toast
+@inject IClassroomService ClassroomService
+
+<PageTitle>My classrooms</PageTitle>
+
+@if (!IsAuthenticated)
+{
+    <h2>My classrooms</h2>
+    <RadzenAlert Severity="AlertSeverity.Warning" Style="margin-top:12px;">
+        You need to log in to view and manage classrooms.
+    </RadzenAlert>
+
+    <div class="mt-3">
+        <RadzenButton Text="Login"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Style="margin-right:8px;"
+                      Click="@(() => Nav.NavigateTo("/login"))" />
+        <RadzenButton Text="Register"
+                      Variant="Variant.Outlined"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Click="@(() => Nav.NavigateTo("/register"))" />
+    </div>
+}
+else
+{
+    <h2>My classrooms</h2>
+
+    <RadzenText Text="Here you can see classes where you are a teacher or a student."
+                Style="color:#607D8B; margin-bottom:16px; display:block;" />
+
+    <div class="mb-3">
+        @if (IsTeacher)
+        {
+            <RadzenButton Icon="add"
+                          Text="Create classroom"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Style="margin-bottom:8px; background-color:#0B63CE; border:none; margin-right:8px;"
+                          Click="@OpenCreateDialog" />
+        }
+
+        <RadzenButton Icon="group_add"
+                      Text="Join classroom"
+                      ButtonStyle="ButtonStyle.Secondary"
+                      Variant="Variant.Outlined"
+                      Style="margin-bottom:8px;"
+                      Click="@OpenJoinDialog" />
+    </div>
+
+    @if (isLoading)
+    {
+        <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
+    }
+    else if (error != null)
+    {
+        <RadzenAlert Severity="AlertSeverity.Error" Style="margin-top:12px;">
+            @error
+        </RadzenAlert>
+    }
+    else if (classrooms == null || classrooms.Count == 0)
+    {
+        <RadzenAlert Severity="AlertSeverity.Info" Style="margin-top:12px;">
+            You are not in any classroom yet.
+        </RadzenAlert>
+    }
+    else
+    {
+        <RadzenDataGrid Data="@classrooms"
+                        TItem="MyClassroomView"
+                        RowHover="true"
+                        Style="margin-top:8px; background:white;">
+            <Columns>
+                <RadzenDataGridColumn TItem="MyClassroomView" Property="Title" Title="Title" />
+                <RadzenDataGridColumn TItem="MyClassroomView" Property="Section" Title="Section" />
+                <RadzenDataGridColumn TItem="MyClassroomView" Property="RoleInClass" Title="Role" />
+                <RadzenDataGridColumn TItem="MyClassroomView" Title="Actions">
+                    <Template Context="row">
+                        <RadzenButton Icon="open_in_new"
+                                      Size="ButtonSize.Small"
+                                      Text="Open"
+                                      Class="me-1"
+                                      ButtonStyle="ButtonStyle.Primary"
+                                      Click="@(() => Nav.NavigateTo($"/classrooms/{row.Id}"))" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    }
+}
+
+@code {
+    private bool isLoading = true;
+    private string? error;
+    private List<MyClassroomView> classrooms = new();
+
+    private bool IsAuthenticated => CurrentUser.User != null;
+    private bool IsTeacher =>
+        CurrentUser.User?.Roles?.Any(r =>
+            string.Equals(r, "Teacher", StringComparison.OrdinalIgnoreCase) ||
+            r.Contains("викладач", StringComparison.OrdinalIgnoreCase)
+        ) == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        error = null;
+
+        if (!IsAuthenticated)
+        {
+            isLoading = false;
+            return;
+        }
+
+        try
+        {
+            var userIdStr = CurrentUser.User!.UserId;
+            if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                error = "Invalid user id.";
+                return;
+            }
+
+            var list = await ClassroomService.GetMyClassroomsAsync(userId, CancellationToken.None);
+
+            classrooms = list.Select(x => new MyClassroomView
+            {
+                Id = x.Id,
+                Title = x.Title,
+                Section = x.Section,
+                RoleInClass = x.RoleInClass ?? ""
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        if (!IsTeacher)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Access denied",
+                Detail = "Only teachers can create classrooms.",
+                Duration = 4000
+            });
+            return;
+        }
+
+        var result = await DialogService.OpenAsync<SmartClass.Web.Components.Pages.Classrooms.ClassroomCreateDialog>(
+            "Create classroom",
+            new Dictionary<string, object>(),
+            new DialogOptions
+            {
+                Width = "450px",
+                Resizable = false,
+                Draggable = true
+            });
+
+        if (result is bool ok && ok)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task OpenJoinDialog()
+    {
+        var result = await DialogService.OpenAsync<SmartClass.Web.Components.Pages.Classrooms.JoinClassroomDialog>(
+            "Join classroom",
+            new Dictionary<string, object>(),
+            new DialogOptions
+            {
+                Width = "400px",
+                Resizable = false,
+                Draggable = true
+            });
+
+        if (result is bool ok && ok)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private sealed class MyClassroomView
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? Section { get; set; }
+        public string RoleInClass { get; set; } = string.Empty;
+    }
+}

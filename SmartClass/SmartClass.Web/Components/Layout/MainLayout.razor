@@ -1,160 +1,167 @@
 ﻿@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
 @using Radzen
-@using Radzen.Blazor
 @using SmartClass.Application.Contracts.Auth
 @using SmartClass.Application.Contracts.User
 @using SmartClass.Web.Components.Shared
 @using SmartClass.Web.Services
-@inject NavigationManager NavigationManager
-@inject NotificationService NotificationService
-@inject CurrentUserState CurrentUser
+@using SmartClass.Web.Components.Pages.Classrooms
 
+@inject NavigationManager NavigationManager
+@inject CurrentUserState CurrentUser
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject IJSRuntime JS
+@inject AuthApiClient AuthApi
 @implements IDisposable
 
+<AppUserFromLocalStorageInitializer />
 <RadzenComponents />
 
-<style>
-    /* 1. ФОН: Гарна картинка на весь екран */
-    .main-background {
-        background-image: url('/foto/fone/fone5.jpg');
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-    }
-
-    /* 2. САЙДБАР: Суцільний темно-синій колір без білих вставок */
-    .rz-sidebar {
-        background-color: #002171 !important; /* Глибокий синій */
-        color: white !important;
-        box-shadow: 4px 0 10px rgba(0,0,0,0.3); /* Тінь праворуч */
-    }
-
-    /* Стилі для кнопок меню (прибираємо "срібні" бокси) */
-    .rz-panel-menu {
-        background-color: transparent !important;
-        border: none !important;
-    }
-    .rz-navigation-item-link {
-        color: rgba(255,255,255,0.8) !important; /* Трохи прозорий білий */
-    }
-    .rz-navigation-item-link:hover, .rz-navigation-item-link-selected {
-        background-color: rgba(255,255,255,0.15) !important; /* Ефект підсвітки при наведенні */
-        color: #ffffff !important;
-        font-weight: bold;
-    }
-    /* Іконки в меню білі */
-    .rz-navigation-item-icon {
-        color: inherit !important;
-    }
-
-    /* 3. КАРТКА КОНТЕНТУ: "Smart Glass" */
-    /* Це робить текст читабельним, але залишає відчуття легкості */
-    .glass-card {
-        background: rgba(255, 255, 255, 0.85); /* Білий, але трішки прозорий */
-        backdrop-filter: blur(12px); /* Розмиття фону під карткою (ефект матового скла) */
-        border-radius: 16px; /* Закруглені кути */
-        padding: 30px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2); /* Красива тінь */
-        border: 1px solid rgba(255, 255, 255, 0.4); /* Тонкий білий контур */
-        
-        /* Забезпечуємо читабельний текст всередині */
-        color: #1a237e; /* Темно-синій текст */
-    }
-    
-    /* Примусово робимо заголовки темними, щоб їх було видно на білому склі */
-    .glass-card h1, .glass-card h2, .glass-card h3, .glass-card h4, .glass-card h5 {
-        color: #0d47a1 !important;
-    }
-</style>
-
 <RadzenLayout class="main-background" style="height: 100vh; display: flex; flex-direction: column; overflow: hidden;">
-    
-    <RadzenHeader Style="background-color: #ffffff; color: #0d47a1; height: 60px; border-bottom: 2px solid #002171; z-index: 10;">
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Style="height: 100%; padding: 0 1rem;">
-            
-            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+
+    <!-- HEADER -->
+    <RadzenHeader class="custom-header">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Style="height: 100%; padding: 0 1.5rem;">
+
+            <!-- ЛІВА ЧАСТИНА: МЕНЮ + ЛОГО -->
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="16px">
                 @if (IsAuthenticated)
                 {
-                    <RadzenButton Icon="menu" Variant="Variant.Text" Style="color: #0d47a1;" Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+                    <RadzenButton Icon="menu" Variant="Variant.Text" Style="color: var(--primary-color);" Click="@(() => sidebarExpanded = !sidebarExpanded)" />
                 }
+
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="10px" Style="cursor: pointer;" @onclick="NavigateToHome">
+                    <RadzenImage Path="/logo.png" Style="width: 34px; height: 34px;" />
+                    <span class="header-logo-text rz-display-none rz-display-sm-block" style="font-size: 1.25rem;">SMART CLASS</span>
+                </RadzenStack>
             </RadzenStack>
 
+            <!-- ПРАВА ЧАСТИНА: КНОПКИ / ПРОФІЛЬ -->
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
-                @if (IsAuthenticated && userInfo != null)
+
+                @if (!IsReady)
                 {
-                    <RadzenProfileMenu Style="background-color: transparent; border: none; color: #0d47a1;">
+                    <RadzenProgressBarCircular Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" Style="color: var(--primary-color);" />
+                }
+                else if (IsAuthenticated && userInfo != null)
+                {
+                    <!-- Дії (Desktop) -->
+                    <RadzenStack Orientation="Orientation.Horizontal" Gap="12px" class="rz-display-none rz-display-md-flex">
+                        @if (IsTeacher)
+                        {
+                            <RadzenButton Text="Створити клас" Icon="add" class="btn-primary-custom" Click="@OpenCreateClassDialog" />
+                        }
+                        <RadzenButton Text="Приєднатися" Icon="login" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Style="border-radius: 10px; border-color: #cbd5e1; color: var(--text-secondary); font-weight: 600;" Click="@OpenJoinClassDialog" />
+                    </RadzenStack>
+
+                    <!-- Профіль -->
+                    <RadzenProfileMenu Style="background-color: transparent; border: none; color: var(--primary-color);">
                         <Template>
-                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="10px">
-                                <RadzenText Text="@($"{userInfo.Firstname} {userInfo.Lastname}")" Style="color: #0d47a1; font-weight: 600;" class="rz-display-none rz-display-sm-block" />
-                                <RadzenImage Path="/avatars/avatar.png" Style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid #0d47a1;" />
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="12px" Style="padding: 4px 8px; border-radius: 50px; transition: background 0.2s;">
+                                <RadzenText Text="@($"{userInfo.Firstname} {userInfo.Lastname}")" Style="color: var(--text-main); font-weight: 600; font-size: 0.9rem;" class="rz-display-none rz-display-sm-block" />
+                                <RadzenImage Path="/avatars/avatar.png" Style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); object-fit: cover;" />
                             </RadzenStack>
                         </Template>
                         <ChildContent>
-                            <RadzenProfileMenuItem Text="Personal Info" Path="userInfo" Icon="account_circle" />
-                            <RadzenProfileMenuItem Text="Logout" Click="Logout" Icon="logout" />
+                            <div style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">
+                                <span style="display:block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Акаунт</span>
+                                <span style="display:block; font-weight: 600; color: var(--text-main); margin-top: 4px;">@userInfo.Email</span>
+                            </div>
+
+                            <RadzenProfileMenuItem Text="Мій профіль" Path="userInfo" Icon="account_circle" />
+
+                            <div class="rz-display-md-none" style="border-top: 1px solid #f1f5f9; margin-top: 5px; padding-top: 5px;">
+                                @if (IsTeacher)
+                                {
+                                    <RadzenProfileMenuItem Text="Створити клас" Icon="add" Click="@OpenCreateClassDialog" />
+                                }
+                                <RadzenProfileMenuItem Text="Приєднатися до класу" Icon="login" Click="@OpenJoinClassDialog" />
+                            </div>
+
+                            <RadzenButton Text="Logout" Click="@DoLogoutAsync" Icon="logout" ButtonStyle="ButtonStyle.Light" Variant="Variant.Outlined" Style="border-radius: 8px; justify-content: center" />
                         </ChildContent>
                     </RadzenProfileMenu>
                 }
                 else
                 {
-                   <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
-                        <RadzenButton Text="Login" Click="@(() => NavigationManager.NavigateTo("/login"))" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Primary" />
-                        <RadzenButton Text="Register" Click="@(() => NavigationManager.NavigateTo("/register"))" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
-                   </RadzenStack>
+                    <RadzenStack Orientation="Orientation.Horizontal" Gap="12px">
+                        <RadzenButton Text="Увійти" Click="@(() => NavigationManager.NavigateTo("/login"))" Variant="Variant.Text" Style="color: var(--primary-color); font-weight: 600;" />
+                        <RadzenButton Text="Реєстрація" Click="@(() => NavigationManager.NavigateTo("/register"))" class="btn-primary-custom" />
+                    </RadzenStack>
                 }
             </RadzenStack>
         </RadzenStack>
     </RadzenHeader>
 
-    <div style="display: flex; flex: 1; overflow: hidden;">
+    <div style="display: flex; flex: 1; overflow: hidden; position: relative;">
 
         @if (IsAuthenticated && userInfo != null)
         {
-            <RadzenSidebar @bind-Expanded="@sidebarExpanded" Style="width: 260px; height: 100%;">
-                
-                <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" class="rz-py-4" Style="background-color: rgba(0,0,0,0.1);">
-                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Style="cursor: pointer;" @onclick="NavigateToHome">
-                        <RadzenImage Path="/logo.png" Style="width: 32px; height: 32px;" />
-                        <RadzenText Text="SMART CLASS" TextStyle="TextStyle.Subtitle1" Style="color: white; font-weight: bold; letter-spacing: 1px; margin: 0;" />
+            <!-- SIDEBAR -->
+            <RadzenSidebar @bind-Expanded="@sidebarExpanded" Style="width: 270px; height: 100%;">
+
+                <div style="padding: 24px 0; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 10px;">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Gap="10px" Style="cursor: pointer;" @onclick="NavigateToHome">
+                        <RadzenImage Path="/logo.png" Style="width: 32px; height: 32px; filter: brightness(0) invert(1);" />
+                        <span style="font-family: 'Inter', sans-serif; font-weight: 700; letter-spacing: 1px; font-size: 1.1rem; color: white;">SMART CLASS</span>
                     </RadzenStack>
-                </RadzenStack>
+                </div>
 
                 <RadzenPanelMenu DisplayStyle="MenuItemDisplayStyle.IconAndText" ShowArrow="true">
-                    <RadzenPanelMenuItem Text="All projects" Icon="dashboard" Path="clasess" />
-                    <RadzenPanelMenuItem Text="Your Class" Icon="class" Path="application" />
-                    <RadzenPanelMenuItem Text="Your Application" Icon="assignment" Path="@($"/chatdialog/{2}")" />
-                    
-                    <div style="margin-top: 20px; padding-left: 16px; margin-bottom: 5px;">
-                        <span style="font-size: 0.75rem; text-transform: uppercase; color: #90caf9; font-weight: bold;">Work Place</span>
+                    <RadzenPanelMenuItem Text="Мої класи" Icon="school" Path="classrooms" />
+                    <RadzenPanelMenuItem Text="Повідомлення" Icon="notifications" Path="notifications" />
+                    <RadzenPanelMenuItem Text="Профіль" Icon="settings" Path="userInfo" />
+
+                    <div style="margin-top: 30px; padding-left: 24px; margin-bottom: 10px;">
+                        <span style="font-size: 0.75rem; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 700; letter-spacing: 1px;">Швидкі дії</span>
                     </div>
-                    
-                    <RadzenPanelMenuItem Text="Create Project" Icon="add_circle_outline" />
+
+                    <RadzenPanelMenuItem Text="Створити проєкт" Icon="add_circle" Click="@OpenCreateClassDialog" />
                 </RadzenPanelMenu>
-                
-                <div style="padding: 1rem; margin-top: auto;">
-                     <RadzenButton Text="New Project" Icon="add" Variant="Variant.Flat" ButtonStyle="ButtonStyle.Light" Style="width: 100%; color: #0d47a1;" />
+
+                <div style="padding: 20px; margin-top: auto;">
+                    <div style="background: rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; text-align: center; backdrop-filter: blur(5px);">
+                        <p style="margin: 0 0 10px 0; font-size: 0.8rem; color: rgba(255,255,255,0.9);">Потрібна допомога?</p>
+                        <RadzenButton Text="Підтримка" Icon="help_outline" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Light" Style="width: 100%; border-radius: 8px; color: white; border-color: rgba(255,255,255,0.3); font-weight: 500;" />
+                    </div>
                 </div>
             </RadzenSidebar>
         }
 
-        <RadzenBody Style="flex: 1; overflow: auto; background-color: transparent;">
-            <div class="rz-p-4" style="min-height: 100%; display: flex; justify-content: center; align-items: flex-start; padding-top: 40px !important;">
-                
-                <div class="glass-card" style="width: 100%; max-width: 1000px;">
-                    @Body
-                </div>
+        <!-- CONTENT -->
+        <RadzenBody Style="flex: 1; overflow: hidden; background-color: transparent;">
+            <div class="layout-content-center">
+
+                @if (!CurrentUser.IsInitialized)
+                {
+                    <RadzenProgressBarCircular Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" Style="color: var(--primary-color);" />
+                }
+                else
+                {
+                    <div class="glass-card">
+                        @Body
+                    </div>
+                }
 
             </div>
         </RadzenBody>
 
     </div>
-    
+
 </RadzenLayout>
 
 @code {
-    private bool sidebarExpanded = true; 
+    private bool sidebarExpanded = true;
+    private bool IsReady => CurrentUser.IsInitialized;
     private bool IsAuthenticated => CurrentUser.User != null;
-    private UserInfoDto? userInfo => CurrentUser.User;
+    private UserInfoDTO? userInfo => CurrentUser.User;
+
+    private bool IsTeacher =>
+        userInfo?.Roles?.Any(r =>
+            string.Equals(r, "teacher", StringComparison.OrdinalIgnoreCase) ||
+            r.Contains("викладач", StringComparison.OrdinalIgnoreCase)
+        ) == true;
 
     protected override void OnInitialized()
     {
@@ -171,11 +178,85 @@
         CurrentUser.OnChange -= HandleUserStateChanged;
     }
 
-    private async Task Logout()
+
+
+    private async Task DoLogoutAsync()
     {
+        // 1) спроба відправити logout на бекенд (ревокнути refresh токен)
+        try
+        {
+            var refreshToken = await JS.InvokeAsync<string?>("localStorage.getItem", "refreshToken");
+
+            if (!string.IsNullOrWhiteSpace(refreshToken) && CurrentUser.User != null)
+            {
+                var dto = new LogoutDto(CurrentUser.User.UserId, refreshToken);
+                await AuthApi.LogoutAsync(dto); // метод у AuthApiClient, який б’є в api/auth/logout
+            }
+        }
+        catch
+        {
+            // якщо бекенд впав — все одно лог аутимося на клієнті
+        }
+
+        // 2) чистимо localStorage
+        await JS.InvokeVoidAsync("localStorage.removeItem", "accessToken");
+        await JS.InvokeVoidAsync("localStorage.removeItem", "refreshToken");
+
+        // 3) чистимо Bearer
+        AuthApi.SetBearer(null);
+
+        // 4) чистимо локальний стан
         CurrentUser.Clear();
+
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Logout",
+            Detail = "You have been logged out.",
+            Duration = 3000
+        });
+
         NavigationManager.NavigateTo("/");
     }
+   
 
     private void NavigateToHome() => NavigationManager.NavigateTo("/");
+
+    private async Task OpenCreateClassDialog()
+    {
+        if (!IsTeacher)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Access denied",
+                Detail = "Тільки викладачі можуть створювати класи.",
+                Duration = 4000
+            });
+            return;
+        }
+
+        await DialogService.OpenAsync<ClassroomCreateDialog>(
+            "Створення класу",
+            new Dictionary<string, object>(),
+            new DialogOptions
+            {
+                Width = "450px",
+                Resizable = false,
+                Draggable = true
+            });
+    }
+
+    private async Task OpenJoinClassDialog()
+    {
+        await DialogService.OpenAsync<JoinClassroomDialog>(
+            "Приєднання до класу",
+            new Dictionary<string, object>(),
+            new DialogOptions
+            {
+                Width = "400px",
+                Resizable = false,
+                Draggable = true
+            });
+    }
 }

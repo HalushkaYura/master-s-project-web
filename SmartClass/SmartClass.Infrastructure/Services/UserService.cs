@@ -11,7 +11,7 @@ using SmartClass.Domain.Exceptions;
 using SmartClass.Domain.Resources;
 using SmartClass.Infrastructure.Identity.Entities;
 
-namespace SmartClass.Infrastructure.Identity.Services
+namespace SmartClass.Infrastructure.Services
 {
     public class UserService : IUserService
     {
@@ -39,7 +39,7 @@ namespace SmartClass.Infrastructure.Identity.Services
         }
 
 
-        public async Task<UserInfoDto> UserInfoAsync(string userId)
+        public async Task<UserInfoDTO> UserInfoAsync(string userId)
         {
             if (string.IsNullOrWhiteSpace(userId))
                 throw new ArgumentException("userId is null or empty.", nameof(userId));
@@ -54,8 +54,9 @@ namespace SmartClass.Infrastructure.Identity.Services
 
             var roles = await _userManager.GetRolesAsync(user);
 
-            var userPersonalInfo = new UserInfoDto
+            var userPersonalInfo = new UserInfoDTO
             {
+                UserId = user.Id.ToString(),
                 Email = user.Email ?? string.Empty,
                 Firstname = user.Firstname ?? string.Empty,
                 Lastname = user.Lastname ?? string.Empty,

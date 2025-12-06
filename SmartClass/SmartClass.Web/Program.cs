@@ -5,6 +5,7 @@ using SmartClass.Application;
 using SmartClass.Application.Abstractions;
 using SmartClass.Infrastructure;
 using SmartClass.Infrastructure.Data.Repositories;
+using SmartClass.Infrastructure.Services;
 using SmartClass.Web.Components;
 using SmartClass.Web.Services;
 
@@ -108,6 +109,9 @@ namespace SmartClass.Web
                     }
                 });
             });
+
+            // ---------- APPLICATION SERVICES ----------
+            builder.Services.AddScoped<IChatRealtimeSender, ChatRealtimeSender>();
 
 
 
