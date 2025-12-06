@@ -1,0 +1,129 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using SmartClass.Application.Abstractions
+@using SmartClass.Application.Contracts.Assignments
+@using SmartClass.Application.Contracts.Classrooms
+@using SmartClass.Web.Services
+
+@inject IAssignmentService AssignmentService
+@inject CurrentUserState CurrentUser
+@inject Radzen.NotificationService Toast
+@inject Radzen.DialogService DialogService
+
+<EditForm Model="@vm" OnValidSubmit="@HandleSubmit">
+    <DataAnnotationsValidator />
+
+    <RadzenFieldset Style="border:none; padding-left:0;">
+        <RadzenLabel Text="Назва завдання" Component="Title" />
+        <RadzenTextBox @bind-Value="vm.Title"
+                       Name="Title"
+                       Style="width:100%; margin-bottom:6px;" />
+        <ValidationMessage For="@(() => vm.Title)" />
+
+        <RadzenLabel Text="Опис (HTML / форматований текст)" />
+        <RadzenTextArea @bind-Value="vm.DescriptionHtml"
+                        Name="DescriptionHtml"
+                        Style="width:100%; margin-bottom:6px;"
+                        Rows="5" />
+
+        <RadzenLabel Text="Максимальна кількість балів" />
+        <RadzenNumeric @bind-Value="vm.PointsMax"
+                       Name="PointsMax"
+                       Style="width:150px; margin-bottom:6px;" />
+
+        <RadzenLabel Text="Кінцевий термін" />
+        <RadzenDatePicker @bind-Value="vm.DueAt"
+                          Name="DueAt"
+                          Style="width:250px; margin-bottom:6px;" />
+
+        <RadzenCheckBox @bind-Value="vm.AllowLate" />
+        <RadzenLabel Text="Дозволити здачу із запізненням" Style="margin-left:6px;" />
+    </RadzenFieldset>
+
+    <div class="d-flex justify-content-end">
+        <RadzenButton Text="Створити"
+                      Icon="add_task"
+                      ButtonType="ButtonType.Submit"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Style="margin-right:8px;" />
+        <RadzenButton Text="Скасувати"
+                      Icon="close"
+                      ButtonStyle="ButtonStyle.Secondary"
+                      Variant="Variant.Outlined"
+                      Click="@(() => DialogService.Close(false))" />
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public Guid ClassroomId { get; set; }
+
+    private Vm vm = new() { PointsMax = 100, AllowLate = false };
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            if (CurrentUser.User is null)
+            {
+                Toast.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Не авторизовано",
+                    Detail = "Спочатку увійдіть у систему."
+                });
+                return;
+            }
+
+            if (!Guid.TryParse(CurrentUser.User.UserId, out var teacherId))
+            {
+                Toast.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Помилка",
+                    Detail = "Некоректний ідентифікатор користувача."
+                });
+                return;
+            }
+
+            var dto = new CreateAssignmentDto(
+                ClassroomId,
+                vm.Title,
+                vm.DescriptionHtml,
+                vm.PointsMax,
+                vm.DueAt,
+                vm.AllowLate
+            );
+
+            await AssignmentService.CreateAsync(dto, teacherId);
+
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Створено",
+                Detail = "Завдання додано."
+            });
+
+            DialogService.Close(true);
+        }
+        catch (Exception ex)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Помилка",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+    }
+
+    private sealed class Vm
+    {
+        [Required(ErrorMessage = "Введіть назву завдання")]
+        public string Title { get; set; } = string.Empty;
+
+        public string? DescriptionHtml { get; set; }
+        public int PointsMax { get; set; } = 100;
+        public DateTime? DueAt { get; set; }
+        public bool AllowLate { get; set; }
+    }
+}

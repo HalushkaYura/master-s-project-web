@@ -1,0 +1,117 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using SmartClass.Application.Abstractions
+@using SmartClass.Application.Contracts.Classrooms
+@using SmartClass.Web.Services
+
+@inject IMaterialService MaterialService
+@inject CurrentUserState CurrentUser
+@inject Radzen.NotificationService Toast
+@inject Radzen.DialogService DialogService
+
+<EditForm Model="@vm" OnValidSubmit="@HandleSubmit">
+    <DataAnnotationsValidator />
+
+    <RadzenFieldset Style="border:none; padding-left:0;">
+        <RadzenLabel Text="Заголовок" Component="Title" />
+        <RadzenTextBox @bind-Value="vm.Title"
+                       Name="Title"
+                       Style="width:100%; margin-bottom:6px;"
+                       Placeholder="Напр. 'Теорія множин'" />
+        <ValidationMessage For="@(() => vm.Title)" />
+
+        <RadzenLabel Text="Короткий опис" Component="Description" />
+        <RadzenTextArea @bind-Value="vm.Description"
+                        Name="Description"
+                        Style="width:100%; margin-bottom:6px;"
+                        Rows="2" />
+
+        <RadzenLabel Text="Детальний зміст (HTML / форматований текст)" />
+        <RadzenTextArea @bind-Value="vm.ContentHtml"
+                        Name="ContentHtml"
+                        Style="width:100%; margin-bottom:6px;"
+                        Rows="5" />
+    </RadzenFieldset>
+
+    <div class="d-flex justify-content-end">
+        <RadzenButton Text="Зберегти"
+                      Icon="save"
+                      ButtonType="ButtonType.Submit"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Style="margin-right:8px;" />
+        <RadzenButton Text="Скасувати"
+                      Icon="close"
+                      ButtonStyle="ButtonStyle.Secondary"
+                      Variant="Variant.Outlined"
+                      Click="@(() => DialogService.Close(false))" />
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public Guid ClassroomId { get; set; }
+
+    private Vm vm = new();
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            if (CurrentUser.User is null)
+            {
+                Toast.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Не авторизовано",
+                    Detail = "Спочатку увійдіть у систему."
+                });
+                return;
+            }
+
+            if (!Guid.TryParse(CurrentUser.User.UserId, out var teacherId))
+            {
+                Toast.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Помилка",
+                    Detail = "Некоректний ідентифікатор користувача."
+                });
+                return;
+            }
+
+            var dto = new CreateMaterialDto(
+                ClassroomId,
+                vm.Title,
+                vm.Description,
+                vm.ContentHtml
+            );
+
+            await MaterialService.CreateAsync(dto, teacherId);
+
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Збережено",
+                Detail = "Матеріал додано."
+            });
+
+            DialogService.Close(true);
+        }
+        catch (Exception ex)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Помилка",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+    }
+
+    private sealed class Vm
+    {
+        [Required(ErrorMessage = "Введіть заголовок")]
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? ContentHtml { get; set; }
+    }
+}

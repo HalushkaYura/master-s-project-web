@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Options;
 using SmartClass.Application.Abstractions;
 
-namespace SmartClass.Infrastructure.Services
+namespace SmartClass.Infrastructure.Services.Auth
 {
     public class EmailSenderService : IEmailSenderService
     {

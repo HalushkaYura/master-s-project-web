@@ -19,16 +19,16 @@ public sealed class GetAssignmentsByClassroomHandler
     {
         var items = await repository.GetListAsync(x => x.ClassroomId == request.ClassroomId);
 
-        return items.Select(x => new AssignmentDto
-        {
-            Id = x.Id,
-            ClassroomId = x.ClassroomId,
-            Title = x.Title,
-            DescriptionHtml = x.DescriptionHtml,
-            PointsMax = x.PointsMax,
-            DueAt = x.DueAt,
-            AllowLate = x.AllowLate,
-            Status = x.Status
-        }).ToList();
+        return items.Select(x => new AssignmentDto(
+            x.Id,
+            x.ClassroomId,
+            x.CreatedBy,
+            x.Title,
+            x.DescriptionHtml,
+            x.PointsMax,
+            x.DueAt,
+            x.AllowLate,
+            x.Status
+        )).ToList();
     }
 }

@@ -1,48 +1,57 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Options;
 using SmartClass.Application.Abstractions.Storage;
-using SmartClass.Application.Options;
-
-namespace SmartClass.Infrastructure.Files;
 
 public sealed class LocalFileStorage : IFileStorage
 {
-    private readonly string webRoot;
-    private readonly FileStorageOptions options;
+    private readonly IWebHostEnvironment env;
+    private readonly string basePath;
 
-    public LocalFileStorage(IWebHostEnvironment env, IOptions<FileStorageOptions> opts)
+    public LocalFileStorage(IWebHostEnvironment env, IOptions<FileStorageOptions> options)
     {
-        this.options = opts.Value;
-        webRoot = env.WebRootPath!;
-        Directory.CreateDirectory(Path.Combine(webRoot, options.BasePath));
+        this.env = env;
+        basePath = options.Value.BasePath ?? "uploads";
     }
 
-    public async Task<string> SaveAsync(Stream content, string relative, CancellationToken ct)
+    public async Task<string> SaveAsync(Stream content, string relativePath, CancellationToken ct = default)
     {
-        var nextPath = Path.Combine(options.BasePath, relative);
-        var full = Path.Combine(webRoot, nextPath);
+        var root = Path.Combine(env.WebRootPath ?? "wwwroot", basePath);
+        var fullPath = Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar));
 
-        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
 
-        using var fs = new FileStream(full, FileMode.Create, FileAccess.Write);
-        await content.CopyToAsync(fs, ct);
+        using (var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            await content.CopyToAsync(fs, ct);
+        }
 
-        return "/" + nextPath.Replace("\\", "/");
+        // повертаємо відносний шлях типу "uploads/classroom/..."
+        return Path.Combine(basePath, relativePath).Replace('\\', '/');
     }
 
-    public Task DeleteAsync(string relative, CancellationToken ct)
+    public Task DeleteAsync(string relativePath, CancellationToken ct = default)
     {
-        var full = Path.Combine(webRoot, relative.TrimStart('/').Replace("/", "\\"));
-        if (File.Exists(full)) File.Delete(full);
+        var root = env.WebRootPath ?? "wwwroot";
+        var fullPath = Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar));
+
+        if (File.Exists(fullPath))
+            File.Delete(fullPath);
+
         return Task.CompletedTask;
     }
 
-    public Task<Stream> OpenReadAsync(string relative, CancellationToken ct)
+    public Task<Stream> OpenReadAsync(string relativePath, CancellationToken ct = default)
     {
-        var full = Path.Combine(webRoot, relative.TrimStart('/').Replace("/", "\\"));
-        if (!File.Exists(full)) throw new FileNotFoundException();
+        var root = env.WebRootPath ?? "wwwroot";
+        var fullPath = Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar));
 
-        Stream s = new FileStream(full, FileMode.Open, FileAccess.Read);
+        Stream s = File.OpenRead(fullPath);
         return Task.FromResult(s);
     }
+}
+
+public sealed class FileStorageOptions
+{
+    public string Provider { get; set; } = "Local";
+    public string BasePath { get; set; } = "uploads";
 }

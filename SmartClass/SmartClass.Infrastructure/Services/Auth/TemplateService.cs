@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 using SmartClass.Application.Abstractions;
 
-namespace SmartClass.Infrastructure.Services
+namespace SmartClass.Infrastructure.Services.Auth
 {
     public class TemplateService : ITemplateService
     {

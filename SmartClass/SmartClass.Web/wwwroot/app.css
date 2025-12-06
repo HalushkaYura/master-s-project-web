@@ -532,3 +532,72 @@ html, body {
         font-size: 1.5rem;
     }
 }
+
+
+/*Сторінка 404 дизайн*/
+/* Центрування контейнера всередині скляної картки */
+.not-found-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh; /* Висота для центрування */
+    width: 100%;
+    padding: 20px;
+}
+
+/* Стилі для арт-об'єкта */
+.error-art {
+    position: relative;
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+/* Величезний текст 404 на фоні */
+.error-bg-text {
+    font-size: 10rem;
+    font-weight: 900;
+    line-height: 1;
+    background: linear-gradient(180deg, rgba(0, 33, 113, 0.08) 0%, rgba(0, 33, 113, 0) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    user-select: none;
+    z-index: 0;
+}
+
+/* Коло з іконкою */
+.error-icon-circle {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 25px rgba(0, 33, 113, 0.25);
+    z-index: 1;
+    animation: float 3s ease-in-out infinite;
+}
+
+/* Легка анімація левітації */
+@@keyframes float {
+    0% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+</style >

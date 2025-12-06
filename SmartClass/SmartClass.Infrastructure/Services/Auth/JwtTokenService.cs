@@ -11,7 +11,7 @@ using SmartClass.Infrastructure.Identity.Entities;
 using SmartClass.Infrastructure.Options;
 using SmartClass.Infrastructure.Persistence;
 
-namespace SmartClass.Infrastructure.Services
+namespace SmartClass.Infrastructure.Services.Auth
 {
     public class JwtTokenService : IJwtTokenService
     {

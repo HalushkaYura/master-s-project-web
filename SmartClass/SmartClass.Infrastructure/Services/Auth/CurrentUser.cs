@@ -2,7 +2,7 @@
 using SmartClass.Application.Abstractions;
 using System.Security.Claims;
 
-namespace SmartClass.Infrastructure.Services;
+namespace SmartClass.Infrastructure.Services.Auth;
 
 public class CurrentUser : ICurrentUser
 {

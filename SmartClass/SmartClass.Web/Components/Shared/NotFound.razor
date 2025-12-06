@@ -1,26 +1,54 @@
 ﻿@page "/not-found"
+@using Radzen
 @layout MainLayout
 @inject NavigationManager Navigation
-@using Radzen
-@using SmartClass.Web.Components.Layout
 
-<PageTitle>Page Not Found</PageTitle>
+<PageTitle>Сторінку не знайдено</PageTitle>
 
-<div class="container text-center mt-5 bg-gradient" >
-    <RadzenCard Style="max-width: 600px; margin: auto; padding: 20px; " >
-        <div class="text-center">
-            <h1 class="display-4">Oops! Page Not Found</h1>
-            <p class="lead">Sorry, the page you are looking for does not exist. It might have been moved or deleted.</p>
-            <RadzenImage Path="/notFound.png" Style="max-width: 50%; height: auto; margin: 20px 0;" />
-            <div>
-                <p>If you think this is a mistake, please contact support or try the following:</p>
-                <ul class="list-unstyled">
-                    <li>Check the URL for errors</li>
-                    <li>Use the navigation menu to find what you are looking for</li>
-                    <li>Return to the homepage using the button below</li>
-                </ul>
+<div class="not-found-container animate-fade-in">
+    <RadzenStack AlignItems="AlignItems.Center" Gap="1.5rem" Class="text-center" Style="position: relative; z-index: 2;">
+
+        <!-- Арт-об'єкт 404 -->
+        <div class="error-art">
+            <span class="error-bg-text">404</span>
+            <div class="error-icon-circle">
+                <RadzenIcon Icon="search_off" Style="font-size: 3rem; color: white;" />
             </div>
-            <RadzenButton Text="Return to Homepage" Click="@(() => Navigation.NavigateTo("/"))" Style="margin-top: 20px;" Class="rz-button rz-primary rz-button-lg" />
         </div>
-    </RadzenCard>
+
+        <!-- Текстова частина -->
+        <div>
+            <h1 style="color: var(--primary-color); font-weight: 800; font-size: 2.5rem; margin: 0 0 10px 0;">
+                Упс! Сторінку не знайдено
+            </h1>
+            <p style="color: var(--text-secondary); font-size: 1.1rem; max-width: 500px; line-height: 1.6; margin: 0 auto;">
+                Сторінка, яку ви шукаєте, можливо була видалена, її назва змінилася, або вона тимчасово недоступна.
+            </p>
+        </div>
+
+        <!-- Дії -->
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" Style="margin-top: 10px;">
+            <RadzenButton Text="На головну"
+                          Icon="home"
+                          Class="btn-primary-custom"
+                          Style="padding: 10px 30px; font-size: 1rem;"
+                          Click="@(() => Navigation.NavigateTo("/"))" />
+
+            <RadzenButton Text="Назад"
+                          Icon="arrow_back"
+                          ButtonStyle="ButtonStyle.Secondary"
+                          Variant="Variant.Outlined"
+                          Style="border-radius: 10px; color: var(--text-secondary); border-color: #cbd5e1;"
+                          Click="@(() => Navigation.NavigateTo("javascript:history.back()"))" />
+        </RadzenStack>
+
+        <!-- Додаткова допомога -->
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px dashed rgba(0,0,0,0.1); width: 100%; max-width: 400px;">
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 5px;">Вважаєте, що це помилка?</p>
+            <a href="/support" style="color: var(--primary-light); font-weight: 600; text-decoration: none; font-size: 0.9rem;">
+                Зв'язатися з підтримкою
+            </a>
+        </div>
+
+    </RadzenStack>
 </div>

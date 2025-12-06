@@ -5,7 +5,7 @@ using SmartClass.Application;
 using SmartClass.Application.Abstractions;
 using SmartClass.Infrastructure;
 using SmartClass.Infrastructure.Data.Repositories;
-using SmartClass.Infrastructure.Services;
+using SmartClass.Infrastructure.Services.Auth;
 using SmartClass.Web.Components;
 using SmartClass.Web.Services;
 

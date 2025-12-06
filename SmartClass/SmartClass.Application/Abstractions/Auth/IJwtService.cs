@@ -1,8 +1,6 @@
-﻿
+﻿using System.Security.Claims;
 
-using System.Security.Claims;
-
-namespace SmartClass.Application.Abstractions
+namespace SmartClass.Application.Abstractions.Auth
 {
     public interface IJwtService
     {

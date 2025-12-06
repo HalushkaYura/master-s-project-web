@@ -6,13 +6,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using SmartClass.Application.Abstractions;
 using SmartClass.Application.Abstractions.Storage;
-using SmartClass.Application.Options;
-using SmartClass.Infrastructure.Files;
 using SmartClass.Infrastructure.Helpers.Mapping;
 using SmartClass.Infrastructure.Identity.Entities;
 using SmartClass.Infrastructure.Options;
 using SmartClass.Infrastructure.Persistence;
 using SmartClass.Infrastructure.Services;
+using SmartClass.Infrastructure.Services.Auth;
 using System.Text;
 
 namespace SmartClass.Infrastructure;
@@ -21,16 +20,11 @@ public static class AddInfrastructureExtension
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<FileStorageOptions>(configuration.GetSection("FileStorage"));
-        var fsOptions = configuration.GetSection("FileStorage").Get<FileStorageOptions>();
-        if (fsOptions.Provider == "Local")
-        {
-            services.AddScoped<IFileStorage, LocalFileStorage>();
-        }
+
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
         services.AddScoped<IFileStorage, LocalFileStorage>();
-        
+
         services.AddScoped<INotificationService, NotificationService>();
 
         services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
@@ -93,6 +87,17 @@ public static class AddInfrastructureExtension
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IClassroomService, ClassroomService>();
+        services.AddScoped<IMaterialService, MaterialService>();
+        services.AddScoped<IAssignmentService, AssignmentService>();
+
+
+        services.Configure<FileStorageOptions>(configuration.GetSection("FileStorage"));
+        services.AddSingleton<IFileStorage, LocalFileStorage>();
+        //var fsOptions = configuration.GetSection("FileStorage").Get<FileStorageOptions>();
+        //if (fsOptions.Provider == "Local")
+        //{
+        //    services.AddScoped<IFileStorage, LocalFileStorage>();
+        //}
 
         services.AddAutoMapper(cfg => cfg.AddProfile<ApplicationProfile>());
 

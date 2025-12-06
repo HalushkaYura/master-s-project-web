@@ -5,7 +5,7 @@ using SmartClass.Application.Contracts.Auth;
 using SmartClass.Infrastructure.Identity.Entities;
 using SmartClass.Infrastructure.Persistence;
 
-namespace SmartClass.Infrastructure.Services
+namespace SmartClass.Infrastructure.Services.Auth
 {
     public class AuthService : IAuthService
     {

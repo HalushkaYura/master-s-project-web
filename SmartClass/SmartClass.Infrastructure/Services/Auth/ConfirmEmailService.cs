@@ -5,7 +5,7 @@ using SmartClass.Infrastructure.Helpers.Mails;
 using SmartClass.Infrastructure.Identity.Entities;
 using System.Text;
 
-namespace SmartClass.Infrastructure.Services
+namespace SmartClass.Infrastructure.Services.Auth
 {
     public class ConfirmEmailService : IConfirmEmailService
     {
