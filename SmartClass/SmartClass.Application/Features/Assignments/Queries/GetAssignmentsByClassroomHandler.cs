@@ -6,7 +6,7 @@ using SmartClass.Domain.Entities;
 namespace SmartClass.Application.Features.Assignments.Queries;
 
 public sealed class GetAssignmentsByClassroomHandler
-    : IRequestHandler<GetAssignmentsByClassroomQuery, IReadOnlyList<AssignmentDto>>
+    : IRequestHandler<GetAssignmentsByClassroomQuery, IReadOnlyList<AssignmentShortDto>>
 {
     private readonly IRepository<Assignment> repository;
 
@@ -15,11 +15,11 @@ public sealed class GetAssignmentsByClassroomHandler
         this.repository = repository;
     }
 
-    public async Task<IReadOnlyList<AssignmentDto>> Handle(GetAssignmentsByClassroomQuery request, CancellationToken ct)
+    public async Task<IReadOnlyList<AssignmentShortDto>> Handle(GetAssignmentsByClassroomQuery request, CancellationToken ct)
     {
         var items = await repository.GetListAsync(x => x.ClassroomId == request.ClassroomId);
 
-        return items.Select(x => new AssignmentDto(
+        return items.Select(x => new AssignmentShortDto(
             x.Id,
             x.ClassroomId,
             x.CreatedBy,

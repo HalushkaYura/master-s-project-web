@@ -1,10 +1,12 @@
 ﻿@using System.ComponentModel.DataAnnotations
 @using SmartClass.Application.Abstractions
+@using SmartClass.Application.Abstractions.Auth
 @using SmartClass.Application.Contracts.Assignments
-@using SmartClass.Application.Contracts.Classrooms
 @using SmartClass.Web.Services
+@using Radzen
 
 @inject IAssignmentService AssignmentService
+@inject ITokenProvider TokenProvider
 @inject CurrentUserState CurrentUser
 @inject Radzen.NotificationService Toast
 @inject Radzen.DialogService DialogService
@@ -12,75 +14,147 @@
 <EditForm Model="@vm" OnValidSubmit="@HandleSubmit">
     <DataAnnotationsValidator />
 
-    <RadzenFieldset Style="border:none; padding-left:0;">
-        <RadzenLabel Text="Назва завдання" Component="Title" />
-        <RadzenTextBox @bind-Value="vm.Title"
-                       Name="Title"
-                       Style="width:100%; margin-bottom:6px;" />
-        <ValidationMessage For="@(() => vm.Title)" />
+    <RadzenStack Gap="1rem" Style="padding: 10px 0;">
 
-        <RadzenLabel Text="Опис (HTML / форматований текст)" />
-        <RadzenTextArea @bind-Value="vm.DescriptionHtml"
-                        Name="DescriptionHtml"
-                        Style="width:100%; margin-bottom:6px;"
-                        Rows="5" />
+        <h3 style="color: var(--primary-color); font-weight: 700; font-size: 1.4rem; margin-top: 0;">
+            Створення нового завдання
+        </h3>
 
-        <RadzenLabel Text="Максимальна кількість балів" />
-        <RadzenNumeric @bind-Value="vm.PointsMax"
-                       Name="PointsMax"
-                       Style="width:150px; margin-bottom:6px;" />
+        @if (MaterialId.HasValue)
+        {
+            <RadzenAlert Severity="AlertSeverity.Info"
+                         Variant="Variant.Flat"
+                         Shade="Shade.Light"
+                         Style="margin-bottom: 10px; border-radius: 8px;">
+                Це завдання буде прив’язане до теми:
+                <b>@(string.IsNullOrWhiteSpace(MaterialTitle) ? "обрана тема" : MaterialTitle)</b>.
+            </RadzenAlert>
+        }
 
-        <RadzenLabel Text="Кінцевий термін" />
-        <RadzenDatePicker @bind-Value="vm.DueAt"
-                          Name="DueAt"
-                          Style="width:250px; margin-bottom:6px;" />
+        <!-- Назва завдання -->
+        <div>
+            <label class="form-label">Назва завдання *</label>
+            <RadzenTextBox @bind-Value="vm.Title" Name="Title" Style="width:100%;" />
+            <ValidationMessage For="@(() => vm.Title)" />
+        </div>
 
-        <RadzenCheckBox @bind-Value="vm.AllowLate" />
-        <RadzenLabel Text="Дозволити здачу із запізненням" Style="margin-left:6px;" />
-    </RadzenFieldset>
+        <!-- Опис -->
+        <div>
+            <label class="form-label">Опис завдання</label>
+            <RadzenTextArea @bind-Value="vm.DescriptionHtml" Name="DescriptionHtml"
+                            Style="width:100%;" Rows="3"
+                            Placeholder="Детальні умови, посилання, формули..." />
+        </div>
 
-    <div class="d-flex justify-content-end">
-        <RadzenButton Text="Створити"
-                      Icon="add_task"
-                      ButtonType="ButtonType.Submit"
-                      ButtonStyle="ButtonStyle.Primary"
-                      Style="margin-right:8px;" />
+        <!-- Деталі: Бали / Дедлайн -->
+        <RadzenRow RowGap="1rem">
+            <RadzenColumn Size="12" SizeMD="6">
+                <label class="form-label">Максимальні бали *</label>
+                <RadzenNumeric @bind-Value="vm.PointsMax" Name="PointsMax" Style="width:100%;" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6">
+                <label class="form-label">Кінцевий термін</label>
+                <RadzenDatePicker @bind-Value="vm.DueAt" Name="DueAt"
+                                  Style="width:100%;"
+                                  DateFormat="dd.MM.yyyy HH:mm"
+                                  ShowTime="true" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <!-- Дозволити із запізненням -->
+        <div style="margin-top: 8px; padding: 5px 0;">
+            <RadzenCheckBox @bind-Value="vm.AllowLate" />
+            <RadzenLabel Text="Дозволити здачу із запізненням"
+                         Style="margin-left:8px; font-weight: normal; color: var(--text-secondary);" />
+        </div>
+
+        <!-- 🔹 Файли до завдання -->
+        <div>
+            <label class="form-label">Прикріпити файли до завдання</label>
+
+            <RadzenUpload Url="@GetTempUploadUrl()"
+                          Multiple="true"
+                          Accept="*/*"
+                          Auto="true"
+                          ChooseText="Обрати файл(и)"
+                          Complete="@OnUploadCompleted"
+                          Error="@OnUploadError"
+                          Style="margin-bottom:10px;">
+                @if (!string.IsNullOrWhiteSpace(uploadToken))
+                {
+                    <RadzenUploadHeader Name="Authorization"
+                                        Value="@($"Bearer {uploadToken}")" />
+                }
+            </RadzenUpload>
+
+            <small style="color: var(--text-muted);">
+                Файли будуть автоматично прикріплені до цього завдання після збереження.
+            </small>
+        </div>
+
+    </RadzenStack>
+
+    <div class="d-flex justify-content-end" style="margin-top: 2rem;">
         <RadzenButton Text="Скасувати"
                       Icon="close"
                       ButtonStyle="ButtonStyle.Secondary"
                       Variant="Variant.Outlined"
-                      Click="@(() => DialogService.Close(false))" />
+                      Click="@(() => DialogService.Close(false))"
+                      Style="border-radius: 8px; font-weight: 600; margin-right: 12px;
+                             color: var(--text-secondary); border-color: #cbd5e1;" />
+
+        <RadzenButton Text="Створити"
+                      Icon="add_task"
+                      Class="btn-primary-custom"
+                      ButtonType="ButtonType.Submit"
+                      Style="padding: 8px 24px !important;" />
     </div>
 </EditForm>
 
+<style>
+    .form-label {
+        color: var(--text-main);
+        font-weight: 600;
+        font-size: 0.95rem;
+        display: block;
+        margin-bottom: 4px;
+    }
+</style>
+
 @code {
     [Parameter] public Guid ClassroomId { get; set; }
+    [Parameter] public Guid? MaterialId { get; set; }
+    [Parameter] public string? MaterialTitle { get; set; }
 
-    private Vm vm = new() { PointsMax = 100, AllowLate = false };
+    private Vm vm = new()
+    {
+        PointsMax = 100,
+        AllowLate = false,
+        DueAt = DateTime.Now.Date.AddDays(7)
+    };
+
+    private string? uploadToken;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            uploadToken = await TokenProvider.GetAccessTokenAsync();
+            StateHasChanged();
+        }
+    }
+
+    private string GetTempUploadUrl()
+        => $"/api/files/upload/temp/classroom/{ClassroomId}";
 
     private async Task HandleSubmit()
     {
         try
         {
-            if (CurrentUser.User is null)
-            {
-                Toast.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Не авторизовано",
-                    Detail = "Спочатку увійдіть у систему."
-                });
-                return;
-            }
-
+            if (CurrentUser.User is null) { ShowError("Ви не авторизовані."); return; }
             if (!Guid.TryParse(CurrentUser.User.UserId, out var teacherId))
             {
-                Toast.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Помилка",
-                    Detail = "Некоректний ідентифікатор користувача."
-                });
+                ShowError("ID користувача недійсний.");
                 return;
             }
 
@@ -90,7 +164,8 @@
                 vm.DescriptionHtml,
                 vm.PointsMax,
                 vm.DueAt,
-                vm.AllowLate
+                vm.AllowLate,
+                MaterialId
             );
 
             await AssignmentService.CreateAsync(dto, teacherId);
@@ -101,19 +176,45 @@
                 Summary = "Створено",
                 Detail = "Завдання додано."
             });
-
             DialogService.Close(true);
         }
         catch (Exception ex)
         {
-            Toast.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Error,
-                Summary = "Помилка",
-                Detail = ex.Message,
-                Duration = 5000
-            });
+            ShowError(ex.Message);
         }
+    }
+
+    private void OnUploadCompleted(UploadCompleteEventArgs _)
+    {
+        Toast.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Файл(и) завантажено",
+            Detail = "Після збереження вони будуть прикріплені до завдання.",
+            Duration = 3000
+        });
+    }
+
+    private void OnUploadError(UploadErrorEventArgs args)
+    {
+        Toast.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Error,
+            Summary = "Помилка завантаження",
+            Detail = args.Message,
+            Duration = 4000
+        });
+    }
+
+    private void ShowError(string message)
+    {
+        Toast.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Error,
+            Summary = "Помилка",
+            Detail = message,
+            Duration = 5000
+        });
     }
 
     private sealed class Vm
@@ -122,8 +223,13 @@
         public string Title { get; set; } = string.Empty;
 
         public string? DescriptionHtml { get; set; }
+
+        [Range(1, 1000, ErrorMessage = "Бали мають бути від 1 до 1000")]
         public int PointsMax { get; set; } = 100;
+
+        [Required(ErrorMessage = "Вкажіть кінцевий термін")]
         public DateTime? DueAt { get; set; }
+
         public bool AllowLate { get; set; }
     }
 }

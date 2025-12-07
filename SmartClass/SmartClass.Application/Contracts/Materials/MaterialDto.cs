@@ -1,4 +1,6 @@
-﻿namespace SmartClass.Application.Contracts.Classrooms
+﻿using SmartClass.Application.Contracts.Assignments;
+
+namespace SmartClass.Application.Contracts.Classrooms
 {
     public record MaterialDto(
         Guid Id,
@@ -8,6 +10,8 @@
         string? Description,
         string? ContentHtml,
         DateTime CreatedAt,
-        DateTime? UpdatedAt
+        DateTime? UpdatedAt,
+        IReadOnlyList<FileResourceDto> Files,
+        IReadOnlyList<AssignmentShortDto> Assignments
     );
 }

@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.OpenApi.Models;
 using Radzen;
 using SmartClass.Application;
 using SmartClass.Application.Abstractions;
+using SmartClass.Application.Abstractions.Auth;
 using SmartClass.Infrastructure;
 using SmartClass.Infrastructure.Data.Repositories;
 using SmartClass.Infrastructure.Services.Auth;
@@ -64,6 +66,7 @@ namespace SmartClass.Web
             builder.Services.AddScoped<LocalStorage>();
             builder.Services.AddScoped<ICurrentUser, CurrentUser>();
             builder.Services.AddScoped<CurrentUserState>();
+            builder.Services.AddScoped<ITokenProvider, LocalStorageTokenProvider>();
 
             // ---------- GENERAL REPOSITORY ----------
             builder.Services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));
@@ -146,6 +149,10 @@ namespace SmartClass.Web
             // Blazor
             app.MapRazorComponents<App>()
                .AddInteractiveServerRenderMode();
+
+            // Статичні файли з wwwroot (важливо для env.WebRootPath)
+            app.UseStaticFiles();
+
 
             app.Run();
         }

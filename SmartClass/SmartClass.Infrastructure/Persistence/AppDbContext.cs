@@ -87,7 +87,6 @@ namespace SmartClass.Infrastructure.Persistence
                  .HasMaxLength(20)
                  .IsRequired();
 
-                // посилання на Classroom уже налаштоване через Classroom.HasMany(...)
                 // посилання на ApplicationUser
                 b.HasOne<ApplicationUser>()
                  .WithMany()
@@ -108,14 +107,75 @@ namespace SmartClass.Infrastructure.Persistence
 
                 b.Property(x => x.Status)
                  .IsRequired()
-                 .HasMaxLength(20);
+                 .HasMaxLength(20); // Draft|Published|Closed
 
                 b.HasIndex(x => new { x.ClassroomId, x.DueAt });
+                b.HasIndex(x => x.MaterialId);
 
+                // Завдання належить класу — БЕЗ каскаду, щоб не було multiple cascade paths
+                b.HasOne<Classroom>()
+                 .WithMany()
+                 .HasForeignKey(x => x.ClassroomId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // Хто створив
                 b.HasOne<ApplicationUser>()
                  .WithMany()
                  .HasForeignKey(x => x.CreatedBy)
                  .OnDelete(DeleteBehavior.NoAction);
+
+                // Опційний зв’язок з Material (тема) — SET NULL при видаленні Material
+                b.HasOne(x => x.Material)
+                 .WithMany(m => m.Assignments)
+                 .HasForeignKey(x => x.MaterialId)
+                 .OnDelete(DeleteBehavior.SetNull);
+
+                b.HasMany(x => x.Files)
+                 .WithOne(f => f.Assignment)
+                 .HasForeignKey(f => f.AssignmentId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+            });
+
+            // =========================
+            // MATERIAL
+            // =========================
+            modelBuilder.Entity<Material>(b =>
+            {
+                b.HasKey(x => x.Id);
+
+                b.Property(x => x.Title)
+                 .IsRequired()
+                 .HasMaxLength(200);
+
+                b.Property(x => x.Description)
+                 .HasMaxLength(1000);
+
+                b.HasIndex(x => new { x.ClassroomId, x.Title });
+
+                // Матеріал належить класу (може каскадитись, це ок)
+                b.HasOne<Classroom>()
+                 .WithMany()
+                 .HasForeignKey(x => x.ClassroomId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                // Хто створив матеріал
+                b.HasOne<ApplicationUser>()
+                 .WithMany()
+                 .HasForeignKey(x => x.CreatedBy)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // 1 Material → багато Assignments
+                b.HasMany(x => x.Assignments)
+                 .WithOne(a => a.Material)
+                 .HasForeignKey(a => a.MaterialId)
+                 .OnDelete(DeleteBehavior.SetNull);
+
+                // 1 Material → багато Files
+                b.HasMany(x => x.Files)
+                 .WithOne(f => f.Material)
+                 .HasForeignKey(f => f.MaterialId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
 
             // =========================
@@ -223,22 +283,61 @@ namespace SmartClass.Infrastructure.Persistence
             {
                 b.HasKey(x => x.Id);
 
+                // --- Властивості ---
                 b.Property(x => x.FileName)
-                 .IsRequired()
-                 .HasMaxLength(260);
+                    .IsRequired()
+                    .HasMaxLength(260);
 
                 b.Property(x => x.ContentType)
-                 .IsRequired()
-                 .HasMaxLength(200);
+                    .IsRequired()
+                    .HasMaxLength(200);
 
                 b.Property(x => x.BlobPath)
-                 .IsRequired()
-                 .HasMaxLength(1000);
+                    .IsRequired()
+                    .HasMaxLength(1000);
 
+                // Якщо хочеш, можеш додати ще:
+                // b.Property(x => x.SizeBytes).IsRequired();
+                // b.Property(x => x.UploadedAt).IsRequired();
+
+                // --- Індекси ---
                 b.HasIndex(x => new { x.OwnerId, x.SubmissionId, x.UploadedAt });
                 b.HasIndex(x => new { x.ClassroomId, x.MaterialId });
-            });
+                b.HasIndex(x => new { x.ClassroomId, x.AssignmentId });
+                b.HasIndex(x => x.AssignmentId);
 
+                // --- Зв'язки ---
+
+                // Власник файлу
+                b.HasOne<ApplicationUser>()
+                    .WithMany()
+                    .HasForeignKey(x => x.OwnerId)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                // Файл → Classroom (без каскаду)
+                b.HasOne<Classroom>()
+                    .WithMany()
+                    .HasForeignKey(x => x.ClassroomId)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                // Файл → Material (каскад)
+                b.HasOne(x => x.Material)
+                    .WithMany(m => m.Files)
+                    .HasForeignKey(x => x.MaterialId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Файл → Assignment (БЕЗ каскаду, щоб не плодити шляхи)
+                b.HasOne(x => x.Assignment)
+                    .WithMany(a => a.Files)
+                    .HasForeignKey(x => x.AssignmentId)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                // Файл → Submission (без каскаду)
+                b.HasOne(x => x.Submission)
+                    .WithMany()
+                    .HasForeignKey(x => x.SubmissionId)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
             // =========================
             // REFRESH TOKEN
             // =========================

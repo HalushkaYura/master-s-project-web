@@ -6,13 +6,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using SmartClass.Application.Abstractions;
 using SmartClass.Application.Abstractions.Storage;
+using SmartClass.Application.Options;
 using SmartClass.Infrastructure.Helpers.Mapping;
 using SmartClass.Infrastructure.Identity.Entities;
 using SmartClass.Infrastructure.Options;
 using SmartClass.Infrastructure.Persistence;
 using SmartClass.Infrastructure.Services;
 using SmartClass.Infrastructure.Services.Auth;
+using SmartClass.Infrastructure.Storage;
 using System.Text;
+using FileStorageOptions = SmartClass.Infrastructure.Storage.FileStorageOptions;
 
 namespace SmartClass.Infrastructure;
 
@@ -20,10 +23,21 @@ public static class AddInfrastructureExtension
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-
+        // 1) Звичайний DbContext (для Identity, якщо треба)
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
-        services.AddScoped<IFileStorage, LocalFileStorage>();
+
+        // 2) ФАБРИКА КОНТЕКСТУ – робимо її SCOPED, щоб не було конфлікту з options
+        services.AddDbContextFactory<AppDbContext>(
+            options => options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")),
+            ServiceLifetime.Scoped);
+
+
+
+        services.Configure<FileStorageOptions>(
+            configuration.GetSection("FileStorage"));
+
+        services.AddSingleton<IFileStorage, LocalFileStorage>();
 
         services.AddScoped<INotificationService, NotificationService>();
 
@@ -74,6 +88,25 @@ public static class AddInfrastructureExtension
                         if (ctx.Request.Cookies.TryGetValue("accessToken", out var token))
                         {
                             ctx.Token = token;
+                        }
+
+                        return Task.CompletedTask;
+                    }
+                };
+
+                // ДОДАТКОВО: читаємо токен з query ?access_token=... для файлів
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        // пробуємо знайти токен в query ?access_token=...
+                        var accessToken = context.Request.Query["access_token"];
+
+                        // застосовуємо це тільки для файлів (щоб не ловити зайве)
+                        if (!string.IsNullOrEmpty(accessToken) &&
+                            context.HttpContext.Request.Path.StartsWithSegments("/api/files"))
+                        {
+                            context.Token = accessToken;
                         }
 
                         return Task.CompletedTask;

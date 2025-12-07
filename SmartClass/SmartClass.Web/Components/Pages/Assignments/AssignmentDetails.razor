@@ -1,0 +1,252 @@
+﻿@page "/classrooms/{ClassroomId:guid}/assignments/{AssignmentId:guid}"
+@layout MainLayout
+
+@using SmartClass.Application.Abstractions
+@using SmartClass.Application.Abstractions.Auth
+@using SmartClass.Application.Contracts.Assignments
+@using SmartClass.Application.Contracts
+@using SmartClass.Web.Services
+@using Radzen
+
+@inject IAssignmentService AssignmentService
+@inject ITokenProvider TokenProvider
+@inject CurrentUserState CurrentUser
+@inject NavigationManager Nav
+@inject Radzen.NotificationService Toast
+
+<PageTitle>@(assignment is null ? "Завдання" : assignment.Title)</PageTitle>
+
+<div class="animate-fade-in">
+    @if (isLoading)
+    {
+        <div style="display:flex;justify-content:center;align-items:center;height:300px;">
+            <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate"
+                                       Size="ProgressBarCircularSize.Medium" />
+        </div>
+    }
+    else if (!IsAuthenticated)
+    {
+        <RadzenAlert Severity="AlertSeverity.Warning">
+            Ви повинні увійти, щоб переглядати завдання.
+        </RadzenAlert>
+    }
+    else if (error != null)
+    {
+        <RadzenAlert Severity="AlertSeverity.Error">
+            @error
+        </RadzenAlert>
+    }
+    else if (assignment != null)
+    {
+        <div class="classroom-header" style="margin-bottom:20px;">
+            <h1 style="margin:0; color:var(--primary-color); font-weight:800;">
+                @assignment.Title
+            </h1>
+
+            @if (!string.IsNullOrWhiteSpace(assignment.MaterialTitle) && assignment.MaterialId != null)
+            {
+                <p style="margin-top:4px;">
+                    Тема:
+                    <RadzenLink Text="@assignment.MaterialTitle"
+                                Click="@(() => OpenMaterial(assignment.MaterialId.Value))" />
+                </p>
+            }
+
+            <p style="color:var(--text-secondary); margin-top:4px;">
+                Макс. бал: <b>@assignment.PointsMax</b>
+                @if (assignment.DueAt != null)
+                {
+                    <span> | Дедлайн: @assignment.DueAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                }
+            </p>
+
+            <p style="font-size:0.85rem; color:var(--text-muted);">
+                Статус: @assignment.Status
+            </p>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(assignment.DescriptionHtml))
+        {
+            <div class="glass-card" style="padding:16px; margin-bottom:20px;">
+                @((MarkupString)assignment.DescriptionHtml)
+            </div>
+        }
+
+        <RadzenTabs Style="background:transparent; box-shadow:none; border:none;">
+            <Tabs>
+                <RadzenTabsItem Text="Файли завдання" Icon="attach_file">
+                    <div class="tab-content-wrapper">
+                        @if (IsTeacher)
+                        {
+                            <RadzenUpload Url="@GetAssignmentUploadUrl()"
+                                          Multiple="true"
+                                          Accept="*/*"
+                                          Auto="true"
+                                          ChooseText="Обрати файл"
+                                          Complete="@OnUploadCompleted"
+                                          Error="@OnUploadError"
+                                          Style="margin-bottom:10px;">
+
+                                @* Додаємо Authorization заголовок *@
+                                @if (!string.IsNullOrWhiteSpace(uploadToken))
+                                {
+                                    <RadzenUploadHeader Name="Authorization"
+                                                        Value="@($"Bearer {uploadToken}")" />
+                                }
+                            </RadzenUpload>
+                        }
+
+                        @if (assignment.Files != null && assignment.Files.Any())
+                        {
+                            <RadzenDataGrid Data="@assignment.Files"
+                                            TItem="FileResourceDto"
+                                            Class="glass-grid">
+                                <Columns>
+                                    <RadzenDataGridColumn TItem="FileResourceDto" Property="FileName" Title="Файл" />
+                                    <RadzenDataGridColumn TItem="FileResourceDto" Title="Розмір">
+                                        <Template Context="f">
+                                            @FormatSize(f.SizeBytes)
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                    <RadzenDataGridColumn TItem="FileResourceDto">
+                                        <Template Context="f">
+                                            <RadzenButton Text="Завантажити"
+                                                          Icon="download"
+                                                          Size="ButtonSize.Small"
+                                                          Click="@(async () => await DownloadFile(f.Id))" />
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                </Columns>
+                            </RadzenDataGrid>
+                        }
+                        else
+                        {
+                            <p class="text-muted">Поки немає прикріплених файлів.</p>
+                        }
+                    </div>
+                </RadzenTabsItem>
+
+                @* Тут пізніше можна додати вкладку "Відповіді студентів" *@
+            </Tabs>
+        </RadzenTabs>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid ClassroomId { get; set; }
+    [Parameter] public Guid AssignmentId { get; set; }
+
+    private AssignmentDetailsDto? assignment;
+    private bool isLoading = true;
+    private string? error;
+
+    // 🔹 Токен для завантаження/завантаження файлів
+    private string? uploadToken;
+
+    private bool IsAuthenticated => CurrentUser.User != null;
+    private bool IsTeacher =>
+        CurrentUser.User?.Roles?.Any(r =>
+            string.Equals(r, "teacher", StringComparison.OrdinalIgnoreCase) ||
+            r.Contains("викладач", StringComparison.OrdinalIgnoreCase)
+        ) == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAssignment();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            uploadToken = await TokenProvider.GetAccessTokenAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAssignment()
+    {
+        isLoading = true;
+        error = null;
+
+        try
+        {
+            if (!IsAuthenticated)
+                return;
+
+            assignment = await AssignmentService.GetByIdAsync(ClassroomId, AssignmentId, CancellationToken.None);
+            if (assignment == null)
+            {
+                error = "Завдання не знайдено.";
+            }
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetAssignmentUploadUrl()
+        => $"/api/files/upload/assignment/{AssignmentId}?classroomId={ClassroomId}";
+
+    private async Task OnUploadCompleted(UploadCompleteEventArgs _)
+    {
+        Toast.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Файл(и) завантажено",
+            Detail = "Список файлів оновлено.",
+            Duration = 3000
+        });
+
+        await LoadAssignment();
+        StateHasChanged();
+    }
+
+    private void OnUploadError(UploadErrorEventArgs args)
+    {
+        Toast.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Error,
+            Summary = "Помилка завантаження",
+            Detail = args.Message,
+            Duration = 4000
+        });
+    }
+
+    private async Task DownloadFile(Guid fileId)
+    {
+        var token = await TokenProvider.GetAccessTokenAsync();
+
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Помилка",
+                Detail = "Немає токена авторизації. Увійдіть у систему ще раз.",
+                Duration = 4000
+            });
+            return;
+        }
+
+        var url = $"/api/files/{fileId}/download?access_token={token}";
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    private void OpenMaterial(Guid materialId)
+        => Nav.NavigateTo($"/classrooms/{ClassroomId}/materials/{materialId}");
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        var kb = bytes / 1024d;
+        if (kb < 1024) return $"{kb:F1} KB";
+        var mb = kb / 1024d;
+        return $"{mb:F1} MB";
+    }
+}

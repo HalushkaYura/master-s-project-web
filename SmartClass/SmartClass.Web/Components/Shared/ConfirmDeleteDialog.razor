@@ -1,0 +1,93 @@
+﻿@using Radzen
+@using Radzen.Blazor
+@inject DialogService DialogService
+
+<div class="delete-dialog-content">
+
+    <!-- 1. Іконка попередження -->
+    <div class="warning-icon-wrapper">
+        <RadzenIcon Icon="delete_forever" Style="font-size: 3.5rem; color: #ef4444;" />
+    </div>
+
+    <!-- 2. Текстова частина -->
+    <div class="text-center" style="margin-bottom: 24px;">
+        <!-- Заголовок, який передаємо через параметр -->
+        <h3 style="color: var(--text-main); font-weight: 700; margin-bottom: 12px;">@Title</h3>
+
+        <!-- Основне повідомлення -->
+        <p style="color: var(--text-secondary); font-size: 1rem; line-height: 1.5; margin-bottom: 12px;">
+            @Message
+        </p>
+
+        <!-- Назва об'єкта, який видаляємо (виділено для акценту) -->
+        @if (!string.IsNullOrEmpty(EntityName))
+        {
+            <div style="background-color: #fef2f2; border: 1px dashed #fecaca; border-radius: 8px; padding: 8px 16px; display: inline-block; margin-top: 5px;">
+                <span style="color: #b91c1c; font-weight: 600; font-size: 0.95rem;">@EntityName</span>
+            </div>
+        }
+
+        <!-- Додаткове попередження про незворотність дії -->
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 20px;">
+            <RadzenIcon Icon="info" Style="font-size: 1rem; vertical-align: middle; margin-right: 4px;" />
+            Цю дію неможливо скасувати.
+        </p>
+    </div>
+
+    <!-- 3. Кнопки (вирівняні по центру) -->
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="12px">
+        <!-- Кнопка Скасувати: повертає false -->
+        <RadzenButton Text="Скасувати"
+                      ButtonStyle="ButtonStyle.Light"
+                      Variant="Variant.Flat"
+                      Click="@(() => DialogService.Close(false))"
+                      Style="border-radius: 10px; padding: 0 24px; font-weight: 600; color: var(--text-secondary); background: #f1f5f9;" />
+
+        <!-- Кнопка Видалити: повертає true -->
+        <RadzenButton Text="Видалити"
+                      Icon="delete"
+                      ButtonStyle="ButtonStyle.Danger"
+                      Click="@(() => DialogService.Close(true))"
+                      Style="border-radius: 10px; padding: 0 24px; font-weight: 600; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);" />
+    </RadzenStack>
+
+</div>
+    <style>
+        .delete-dialog-content {
+            padding: 10px;
+        }
+
+        /* Стиль для кола навколо іконки */
+        .warning-icon-wrapper {
+            width: 90px;
+            height: 90px;
+            background-color: #fef2f2; /* Дуже світлий червоний фон */
+            border-radius: 50%; /* Робить блок круглим */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px auto; /* Центрування по горизонталі */
+            animation: pulse-red 2s infinite; /* Анімація пульсації */
+        }
+
+        /* Анімація пульсації */
+        @@keyframes pulse-red {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.1);
+            }
+
+            70% {
+                box-shadow: 0 0 0 15px rgba(239, 68, 68, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+    </style>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Видалення";
+    [Parameter] public string Message { get; set; } = "Ви впевнені, що хочете видалити цей об'єкт?";
+    [Parameter] public string? EntityName { get; set; }
+}

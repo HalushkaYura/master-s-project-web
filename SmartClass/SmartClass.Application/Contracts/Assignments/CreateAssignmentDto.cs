@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SmartClass.Application.Contracts.Assignments
 {
@@ -12,6 +8,7 @@ namespace SmartClass.Application.Contracts.Assignments
         string? DescriptionHtml,
         int PointsMax,
         DateTime? DueAt,
-        bool AllowLate
+        bool AllowLate,
+        Guid? MaterialId // ← додаємо це
     );
 }

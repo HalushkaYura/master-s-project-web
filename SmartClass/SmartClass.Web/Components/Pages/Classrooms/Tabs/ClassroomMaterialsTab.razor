@@ -1,0 +1,202 @@
+﻿@using SmartClass.Application.Abstractions
+@using SmartClass.Application.Contracts.Materials
+@using Radzen
+@using SmartClass.Web.Components.Pages.Materials
+@inject IMaterialService MaterialService
+@inject NavigationManager Nav
+@inject Radzen.DialogService DialogService
+@inject Radzen.NotificationService Toast
+
+@if (isLoading)
+{
+    <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate"
+                               Size="ProgressBarCircularSize.Small" />
+}
+else if (error != null)
+{
+    <RadzenAlert Severity="AlertSeverity.Error"
+                 Variant="Variant.Flat"
+                 Shade="Shade.Lighter"
+                 Style="border-radius: 12px;">
+        @error
+    </RadzenAlert>
+}
+else
+{
+    @if (IsTeacher)
+    {
+        <div style="margin-bottom: 20px; display: flex; justify-content: flex-end;">
+            <RadzenButton Text="Додати матеріал"
+                          Icon="library_add"
+                          Class="btn-primary-custom"
+                          Click="@OpenCreateDialog" />
+        </div>
+    }
+
+    @if (materials == null || !materials.Any())
+    {
+        <div style="text-align: center; color: var(--text-muted); padding: 40px; border: 2px dashed rgba(0,0,0,0.1); border-radius: 12px;">
+            <RadzenIcon Icon="folder_off" Style="font-size: 3rem; opacity: 0.5;" />
+            <p>У цьому класі поки немає матеріалів.</p>
+        </div>
+    }
+    else
+    {
+        <RadzenStack Gap="1rem">
+            @foreach (var item in materials)
+            {
+                <div class="material-card" @onclick="@(() => NavigateToDetails(item.Id))">
+                    <div class="material-icon">
+                        <RadzenIcon Icon="article" />
+                    </div>
+                    <div class="material-content">
+                        <h4 class="material-title">@item.Title</h4>
+
+                        @if (!string.IsNullOrWhiteSpace(item.Description))
+                        {
+                            <p class="material-desc">@item.Description</p>
+                        }
+
+                        <span class="material-date">
+                            Додано: @item.CreatedAt.ToShortDateString()
+                        </span>
+                    </div>
+                    <div class="material-actions">
+                        <RadzenButton Icon="chevron_right" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" />
+                    </div>
+                </div>
+            }
+        </RadzenStack>
+    }
+}
+
+<style>
+    .material-card {
+        background: rgba(255,255,255,0.6);
+        border: 1px solid rgba(0, 33, 113, 0.05);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+        .material-card:hover {
+            background: rgba(255,255,255,0.9);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+    .material-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+        color: var(--primary-color);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .material-content {
+        flex: 1;
+    }
+
+    .material-title {
+        margin: 0 0 4px 0;
+        color: var(--text-main);
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .material-desc {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .material-date {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        display: block;
+        margin-top: 6px;
+    }
+</style>
+
+@code {
+    [Parameter] public Guid ClassroomId { get; set; }
+    [Parameter] public bool IsTeacher { get; set; }
+
+    private List<MaterialListItemDto> materials = new();
+    private bool isLoading = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    // 🔹 ПУБЛІЧНИЙ метод перезавантаження
+    public async Task ReloadAsync()
+    {
+        isLoading = true;
+        error = null;
+
+        try
+        {
+            var result = await MaterialService.GetForClassroomAsync(ClassroomId, CancellationToken.None);
+
+            materials = result
+                .Select(m => new MaterialListItemDto(
+                    m.Id,
+                    m.Title,
+                    m.Description,
+                    m.CreatedAt,
+                    m.Files
+                ))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void NavigateToDetails(Guid id)
+    {
+        Nav.NavigateTo($"/classrooms/{ClassroomId}/materials/{id}");
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var result = await DialogService.OpenAsync<MaterialCreateDialog>(
+            "Новий навчальний матеріал",
+            new Dictionary<string, object>
+            {
+                ["ClassroomId"] = ClassroomId
+            },
+            new DialogOptions
+            {
+                Width = "600px",
+                Resizable = true,
+                Draggable = true
+            });
+
+        if (result is bool ok && ok)
+        {
+            await ReloadAsync();
+        }
+    }
+}

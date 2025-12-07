@@ -3,16 +3,13 @@
 
 @using SmartClass.Application.Abstractions
 @using SmartClass.Application.Contracts.Classrooms
-@using SmartClass.Application.Contracts.Materials
-@using SmartClass.Application.Contracts.Assignments
+@using SmartClass.Web.Components.Pages.Classrooms.Tabs
 @using SmartClass.Web.Services
 @using Radzen
-@using SmartClass.Web.Components.Pages.Assignments
 @using SmartClass.Web.Components.Pages.Materials
+@using SmartClass.Web.Components.Pages.Assignments
 
 @inject IClassroomService ClassroomService
-@inject IMaterialService MaterialService
-@inject IAssignmentService AssignmentService
 @inject CurrentUserState CurrentUser
 @inject NavigationManager Nav
 @inject Radzen.NotificationService Toast
@@ -83,7 +80,6 @@
                             <RadzenIcon Icon="person" Style="font-size: 1rem;" />
                             <span>@details.OwnerName</span>
                         </div>
-                        <!-- можна додати кількість учасників, якщо є в DTO -->
                     </div>
 
                     @if (!string.IsNullOrWhiteSpace(details.Description))
@@ -108,7 +104,7 @@
             </RadzenStack>
         </div>
 
-        <!-- TEACHER TOOLBAR (Видно тільки викладачам) -->
+        <!-- TEACHER TOOLBAR -->
         @if (IsTeacher)
         {
             <div class="teacher-toolbar">
@@ -129,8 +125,7 @@
                                   Style="border-radius: 10px; color: var(--text-secondary); border-color: #cbd5e1; font-weight: 600;"
                                   Click="@OpenCreateMaterialDialog" />
 
-
-                    <div style="flex: 1;"></div> <!-- Spacer -->
+                    <div style="flex: 1;"></div>
 
                     <RadzenButton Text="Редагувати клас"
                                   Icon="edit"
@@ -225,132 +220,24 @@
                 <!-- МАТЕРІАЛИ -->
                 <RadzenTabsItem Text="Матеріали" Icon="library_books">
                     <div class="tab-content-wrapper">
-                        @if (IsTeacher)
-                        {
-                            <div style="margin-bottom: 20px;">
-                                <RadzenButton Text="Додати матеріал"
-                                              Icon="add"
-                                              Class="btn-primary-custom"
-                                              Click="@OpenCreateMaterialDialog" />
-                            </div>
-                        }
-
-                        @if (materials.Count == 0)
-                        {
-                            <div class="content-placeholder">
-                                <RadzenIcon Icon="folder_open"
-                                            Style="font-size: 3rem; color: var(--text-muted); opacity: 0.5; margin-bottom: 10px;" />
-                                <p>Список навчальних матеріалів порожній.</p>
-                            </div>
-                        }
-                        else
-                        {
-                            <RadzenDataList Data="@materials"
-                                            TItem="MaterialDto"
-                                            WrapItems="false"
-                                            Class="glass-list">
-                                <Template Context="m">
-                                    <div style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; cursor:pointer;"
-                                         @onclick="@(() => OpenMaterial(m.Id))">
-                                        <h4 style="margin:0; font-weight:600; color:var(--text-main);">
-                                            @m.Title
-                                        </h4>
-
-                                        @if (!string.IsNullOrWhiteSpace(m.Description))
-                                        {
-                                            <div style="color:#64748b; margin-top:4px;">
-                                                @m.Description
-                                            </div>
-                                        }
-
-                                        @if (!string.IsNullOrWhiteSpace(m.ContentHtml))
-                                        {
-                                            <div style="margin-top:6px; font-size:13px; color:#475569;"
-                                                 @onclick:stopPropagation="true">
-                                                @((MarkupString)m.ContentHtml)
-                                            </div>
-                                        }
-
-                                        <div style="margin-top:8px; font-size:12px; color:#94a3b8;">
-                                            Створено: @m.CreatedAt.ToLocalTime().ToString("g")
-                                            @if (m.UpdatedAt != null)
-                                            {
-                                                <span> · Оновлено: @m.UpdatedAt?.ToLocalTime().ToString("g")</span>
-                                            }
-                                        </div>
-                                    </div>
-                                </Template>
-                            </RadzenDataList>
-                        }
+                        <ClassroomMaterialsTab @ref="materialsTab"
+                                               ClassroomId="ClassroomId"
+                                               IsTeacher="IsTeacher" />
                     </div>
                 </RadzenTabsItem>
 
                 <!-- ЗАВДАННЯ -->
                 <RadzenTabsItem Text="Завдання" Icon="assignment">
                     <div class="tab-content-wrapper">
-                        @if (IsTeacher)
-                        {
-                            <div style="margin-bottom: 20px;">
-                                <RadzenButton Text="Створити завдання"
-                                              Icon="add_task"
-                                              Class="btn-primary-custom"
-                                              Click="@OpenCreateAssignmentDialog" />
-                            </div>
-                        }
-
-                        @if (assignments.Count == 0)
-                        {
-                            <div class="content-placeholder">
-                                <RadzenIcon Icon="quiz"
-                                            Style="font-size: 3rem; color: var(--text-muted); opacity: 0.5; margin-bottom: 10px;" />
-                                <p>Список активних завдань порожній.</p>
-                            </div>
-                        }
-                        else
-                        {
-                            <RadzenDataList Data="@assignments"
-                                            TItem="AssignmentDto"
-                                            WrapItems="false"
-                                            Class="glass-list">
-                                <Template Context="a">
-                                    <div style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; cursor:pointer;"
-                                         @onclick="@(() => OpenAssignment(a.Id))">
-                                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                                            <h4 style="margin:0; font-weight:600; color:var(--text-main);">
-                                                @a.Title
-                                            </h4>
-                                            <span style="font-size:12px; color:#64748b;">
-                                                @a.PointsMax @(" балів")
-                                            </span>
-                                        </div>
-
-                                        @if (!string.IsNullOrWhiteSpace(a.DescriptionHtml))
-                                        {
-                                            <div style="margin-top:4px; font-size:13px; color:#475569;"
-                                                 @onclick:stopPropagation="true">
-                                                @((MarkupString)a.DescriptionHtml)
-                                            </div>
-                                        }
-
-                                        <div style="margin-top:6px; font-size:12px; color:#94a3b8;">
-                                            Статус: @a.Status
-                                            @if (a.DueAt != null)
-                                            {
-                                                <span> · До: @a.DueAt?.ToLocalTime().ToString("g")</span>
-                                            }
-                                        </div>
-                                    </div>
-                                </Template>
-                            </RadzenDataList>
-                        }
+                        <ClassroomAssignmentsTab @ref="assignmentsTab"
+                                                 ClassroomId="ClassroomId"
+                                                 IsTeacher="IsTeacher" />
                     </div>
                 </RadzenTabsItem>
             </Tabs>
         </RadzenTabs>
     }
 </div>
-
-
 
 @code {
     [Parameter] public Guid ClassroomId { get; set; }
@@ -359,8 +246,9 @@
     private bool isLoading = true;
     private string? error;
 
-    private List<MaterialDto> materials = new();
-    private List<AssignmentDto> assignments = new();
+    // 🔹 посилання на дочірні компоненти-таби
+    private ClassroomMaterialsTab? materialsTab;
+    private ClassroomAssignmentsTab? assignmentsTab;
 
     private bool IsAuthenticated => CurrentUser.User != null;
 
@@ -390,19 +278,13 @@
                 return;
             }
 
-            // 1) Деталі класу
             details = await ClassroomService
                 .GetClassroomDetailsAsync(ClassroomId, userId, CancellationToken.None);
 
             if (details == null)
             {
                 error = "Клас не знайдено або ви не є його учасником.";
-                return;
             }
-
-            // 2) Матеріали і завдання
-            await ReloadMaterials();
-            await ReloadAssignments();
         }
         catch (Exception ex)
         {
@@ -448,27 +330,11 @@
         }
     }
 
-    private async Task ReloadMaterials()
-    {
-        materials = (await MaterialService
-            .GetForClassroomAsync(ClassroomId, CancellationToken.None))
-            .ToList();
-    }
-
-    private async Task ReloadAssignments()
-    {
-        assignments = (await AssignmentService
-            .GetForClassroomAsync(ClassroomId, CancellationToken.None))
-            .ToList();
-    }
     private async Task OpenCreateMaterialDialog()
     {
         var result = await DialogService.OpenAsync<MaterialCreateDialog>(
             "Новий навчальний матеріал",
-            new Dictionary<string, object>
-            {
-                ["ClassroomId"] = ClassroomId
-            },
+            new Dictionary<string, object> { ["ClassroomId"] = ClassroomId },
             new DialogOptions
             {
                 Width = "600px",
@@ -476,10 +342,10 @@
                 Draggable = true
             });
 
-        // Якщо в діалозі DialogService.Close(true) – оновлюємо список
-        if (result is bool ok && ok)
+        // 🔹 якщо матеріал успішно створено – оновлюємо таб "Матеріали"
+        if (result is bool ok && ok && materialsTab is not null)
         {
-            await ReloadMaterials();
+            await materialsTab.ReloadAsync();
         }
     }
 
@@ -487,10 +353,7 @@
     {
         var result = await DialogService.OpenAsync<AssignmentCreateDialog>(
             "Нове завдання",
-            new Dictionary<string, object>
-            {
-                ["ClassroomId"] = ClassroomId
-            },
+            new Dictionary<string, object> { ["ClassroomId"] = ClassroomId },
             new DialogOptions
             {
                 Width = "600px",
@@ -498,14 +361,10 @@
                 Draggable = true
             });
 
-        if (result is bool ok && ok)
+        // 🔹 якщо завдання успішно створено – оновлюємо таб "Завдання"
+        if (result is bool ok && ok && assignmentsTab is not null)
         {
-            await ReloadAssignments();
+            await assignmentsTab.ReloadAsync();
         }
     }
-    private void OpenMaterial(Guid materialId)
-        => Nav.NavigateTo($"/classrooms/{ClassroomId}/materials/{materialId}");
-
-    private void OpenAssignment(Guid assignmentId)
-        => Nav.NavigateTo($"/classrooms/{ClassroomId}/assignments/{assignmentId}");
 }

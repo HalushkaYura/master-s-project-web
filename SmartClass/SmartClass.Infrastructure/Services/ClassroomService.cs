@@ -12,11 +12,11 @@ namespace SmartClass.Infrastructure.Services
 {
     public sealed class ClassroomService : IClassroomService
     {
-        private readonly AppDbContext db;
+        private readonly IDbContextFactory<AppDbContext> dbFactory;
 
-        public ClassroomService(AppDbContext db)
+        public ClassroomService(IDbContextFactory<AppDbContext> dbContext)
         {
-            this.db = db;
+            this.dbFactory = dbContext;
         }
 
         public async Task<ClassroomDto> CreateClassroomAsync(
@@ -24,6 +24,7 @@ namespace SmartClass.Infrastructure.Services
             Guid ownerId,
             CancellationToken ct = default)
         {
+            await using var db = await dbFactory.CreateDbContextAsync(ct);
             // 🔹 (опційно) перевіряємо, що користувач взагалі існує
             var ownerExists = await db.Users.AnyAsync(u => u.Id == ownerId, ct);
             if (!ownerExists)
@@ -99,6 +100,7 @@ namespace SmartClass.Infrastructure.Services
         {
             if (string.IsNullOrWhiteSpace(joinCode))
                 throw new ArgumentException("Join code is required.", nameof(joinCode));
+            await using var db = await dbFactory.CreateDbContextAsync(ct);
 
             var classroom = await db.Classrooms
                 .FirstOrDefaultAsync(c => c.JoinCode == joinCode && !c.IsArchived, ct);
@@ -156,6 +158,8 @@ namespace SmartClass.Infrastructure.Services
             Guid userId,
             CancellationToken ct = default)
         {
+            await using var db = await dbFactory.CreateDbContextAsync(ct);
+
             var memberships = await db.ClassMembers
                 .Include(m => m.Classroom)
                 .Where(m => m.UserId == userId)
@@ -180,6 +184,7 @@ namespace SmartClass.Infrastructure.Services
             while (true)
             {
                 var code = GenerateCode(6);
+                await using var db = await dbFactory.CreateDbContextAsync(ct);
 
                 var exists = await db.Classrooms.AnyAsync(c => c.JoinCode == code, ct);
                 if (!exists)
@@ -205,6 +210,8 @@ namespace SmartClass.Infrastructure.Services
     Guid currentUserId,
     CancellationToken ct = default)
         {
+            await using var db = await dbFactory.CreateDbContextAsync(ct);
+
             var classroom = await db.Classrooms
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.Id == classroomId, ct);
@@ -256,6 +263,8 @@ namespace SmartClass.Infrastructure.Services
     string joinCode,
     CancellationToken ct = default)
         {
+            await using var db = await dbFactory.CreateDbContextAsync(ct);
+
             var classroom = await db.Classrooms
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.JoinCode == joinCode && !x.IsArchived, ct);

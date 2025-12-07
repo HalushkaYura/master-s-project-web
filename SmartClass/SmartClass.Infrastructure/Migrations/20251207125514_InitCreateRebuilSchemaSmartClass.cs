@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace SmartClass.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialSmartClass : Migration
+    public partial class InitCreateRebuilSchemaSmartClass : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -55,28 +55,6 @@ namespace SmartClass.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Files",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    OwnerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ClassroomId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    MaterialId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    SubmissionId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    FileName = table.Column<string>(type: "nvarchar(260)", maxLength: 260, nullable: false),
-                    ContentType = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    SizeBytes = table.Column<long>(type: "bigint", nullable: false),
-                    BlobPath = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
-                    UploadedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Files", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Grades",
                 columns: table => new
                 {
@@ -92,24 +70,6 @@ namespace SmartClass.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Grades", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Materials",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ClassroomId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ContentHtml = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Materials", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -307,32 +267,6 @@ namespace SmartClass.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Assignments",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ClassroomId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    DescriptionHtml = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    PointsMax = table.Column<int>(type: "int", nullable: false),
-                    DueAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    AllowLate = table.Column<bool>(type: "bit", nullable: false),
-                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Assignments", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Assignments_AspNetUsers_CreatedBy",
-                        column: x => x.CreatedBy,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Classrooms",
                 columns: table => new
                 {
@@ -406,6 +340,35 @@ namespace SmartClass.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Materials",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ClassroomId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    ContentHtml = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Materials", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Materials_AspNetUsers_CreatedBy",
+                        column: x => x.CreatedBy,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Materials_Classrooms_ClassroomId",
+                        column: x => x.ClassroomId,
+                        principalTable: "Classrooms",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ChannelMembers",
                 columns: table => new
                 {
@@ -459,6 +422,93 @@ namespace SmartClass.Infrastructure.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "Assignments",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ClassroomId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    MaterialId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    DescriptionHtml = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    PointsMax = table.Column<int>(type: "int", nullable: false),
+                    DueAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    AllowLate = table.Column<bool>(type: "bit", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Assignments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Assignments_AspNetUsers_CreatedBy",
+                        column: x => x.CreatedBy,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Assignments_Classrooms_ClassroomId",
+                        column: x => x.ClassroomId,
+                        principalTable: "Classrooms",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Assignments_Materials_MaterialId",
+                        column: x => x.MaterialId,
+                        principalTable: "Materials",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Files",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    OwnerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ClassroomId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    MaterialId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    AssignmentId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    SubmissionId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    FileName = table.Column<string>(type: "nvarchar(260)", maxLength: 260, nullable: false),
+                    ContentType = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    SizeBytes = table.Column<long>(type: "bigint", nullable: false),
+                    BlobPath = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
+                    UploadedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Files", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Files_AspNetUsers_OwnerId",
+                        column: x => x.OwnerId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Files_Assignments_AssignmentId",
+                        column: x => x.AssignmentId,
+                        principalTable: "Assignments",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Files_Classrooms_ClassroomId",
+                        column: x => x.ClassroomId,
+                        principalTable: "Classrooms",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Files_Materials_MaterialId",
+                        column: x => x.MaterialId,
+                        principalTable: "Materials",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Files_Submissions_SubmissionId",
+                        column: x => x.SubmissionId,
+                        principalTable: "Submissions",
+                        principalColumn: "Id");
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
                 table: "AspNetRoleClaims",
@@ -509,6 +559,11 @@ namespace SmartClass.Infrastructure.Migrations
                 column: "CreatedBy");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Assignments_MaterialId",
+                table: "Assignments",
+                column: "MaterialId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_ChannelMembers_ChannelId_UserId",
                 table: "ChannelMembers",
                 columns: new[] { "ChannelId", "UserId" },
@@ -547,9 +602,19 @@ namespace SmartClass.Infrastructure.Migrations
                 column: "OwnerId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Files_AssignmentId",
+                table: "Files",
+                column: "AssignmentId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Files_ClassroomId_MaterialId",
                 table: "Files",
                 columns: new[] { "ClassroomId", "MaterialId" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Files_MaterialId",
+                table: "Files",
+                column: "MaterialId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Files_OwnerId_SubmissionId_UploadedAt",
@@ -557,10 +622,25 @@ namespace SmartClass.Infrastructure.Migrations
                 columns: new[] { "OwnerId", "SubmissionId", "UploadedAt" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_Files_SubmissionId",
+                table: "Files",
+                column: "SubmissionId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Grades_SubmissionId",
                 table: "Grades",
                 column: "SubmissionId",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Materials_ClassroomId_Title",
+                table: "Materials",
+                columns: new[] { "ClassroomId", "Title" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Materials_CreatedBy",
+                table: "Materials",
+                column: "CreatedBy");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Messages_AuthorId",
@@ -608,9 +688,6 @@ namespace SmartClass.Infrastructure.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
-                name: "Assignments");
-
-            migrationBuilder.DropTable(
                 name: "ChannelMembers");
 
             migrationBuilder.DropTable(
@@ -621,9 +698,6 @@ namespace SmartClass.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "Grades");
-
-            migrationBuilder.DropTable(
-                name: "Materials");
 
             migrationBuilder.DropTable(
                 name: "MeetingParticipants");
@@ -641,13 +715,19 @@ namespace SmartClass.Infrastructure.Migrations
                 name: "RefreshTokens");
 
             migrationBuilder.DropTable(
-                name: "Submissions");
-
-            migrationBuilder.DropTable(
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
+                name: "Assignments");
+
+            migrationBuilder.DropTable(
+                name: "Submissions");
+
+            migrationBuilder.DropTable(
                 name: "Channels");
+
+            migrationBuilder.DropTable(
+                name: "Materials");
 
             migrationBuilder.DropTable(
                 name: "Classrooms");

@@ -1,0 +1,308 @@
+﻿@page "/classrooms/{ClassroomId:guid}/materials/{MaterialId:guid}"
+@layout MainLayout
+
+@using SmartClass.Application.Abstractions
+@using SmartClass.Application.Abstractions.Auth
+@using SmartClass.Application.Contracts.Classrooms
+@using SmartClass.Application.Contracts.Materials
+@using SmartClass.Application.Contracts.Assignments
+@using SmartClass.Application.Contracts
+@using SmartClass.Web.Services
+@using Radzen
+
+@inject ITokenProvider TokenProvider
+@inject IMaterialService MaterialService
+@inject CurrentUserState CurrentUser
+@inject NavigationManager Nav
+@inject Radzen.NotificationService Toast
+
+<PageTitle>@(material is null ? "Матеріал" : material.Title)</PageTitle>
+
+<div class="animate-fade-in">
+    @if (isLoading)
+    {
+        <div style="display:flex;justify-content:center;align-items:center;height:300px;">
+            <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate"
+                                       Size="ProgressBarCircularSize.Medium" />
+        </div>
+    }
+    else if (!IsAuthenticated)
+    {
+        <RadzenAlert Severity="AlertSeverity.Warning">
+            Ви повинні увійти, щоб переглядати навчальні матеріали.
+        </RadzenAlert>
+    }
+    else if (error != null)
+    {
+        <RadzenAlert Severity="AlertSeverity.Error">
+            @error
+        </RadzenAlert>
+    }
+    else if (material != null)
+    {
+        <!-- Заголовок матеріалу -->
+        <div class="classroom-header" style="margin-bottom:20px;">
+            <h1 style="margin:0; color:var(--primary-color); font-weight:800;">
+                @material.Title
+            </h1>
+
+            @if (!string.IsNullOrWhiteSpace(material.Description))
+            {
+                <p style="color:var(--text-secondary); margin-top:8px;">
+                    @material.Description
+                </p>
+            }
+
+            <p style="font-size:0.85rem; color:var(--text-muted);">
+                Створено: @material.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                @if (material.UpdatedAt != null)
+                {
+                    <span> · Оновлено: @material.UpdatedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                }
+            </p>
+        </div>
+
+        <!-- Основний контент (теорія / HTML) -->
+        @if (!string.IsNullOrWhiteSpace(material.ContentHtml))
+        {
+            <div class="glass-card" style="padding:16px; margin-bottom:20px;">
+                @((MarkupString)material.ContentHtml)
+            </div>
+        }
+
+        <RadzenTabs Style="background:transparent; box-shadow:none; border:none;">
+            <Tabs>
+                <!-- ФАЙЛИ -->
+                <RadzenTabsItem Text="Прикріплені файли" Icon="attach_file">
+                    <div class="tab-content-wrapper">
+                        @if (IsTeacher)
+                        {
+                            <RadzenUpload Url="@GetMaterialUploadUrl()"
+                                          Multiple="true"
+                                          Accept="*/*"
+                                          Auto="true"
+                                          ChooseText="Обрати файл"
+                                          Complete="@OnUploadCompleted"
+                                          Error="@OnUploadError"
+                                          Style="margin-bottom:10px;">
+
+                                @* Додаємо Authorization заголовок *@
+                                @if (!string.IsNullOrWhiteSpace(uploadToken))
+                                {
+                                    <RadzenUploadHeader Name="Authorization"
+                                                        Value="@($"Bearer {uploadToken}")" />
+                                }
+                            </RadzenUpload>
+                        }
+
+                        @if (material.Files != null && material.Files.Any())
+                        {
+                            <RadzenDataGrid Data="@material.Files"
+                                            TItem="FileResourceDto"
+                                            Class="glass-grid">
+                                <Columns>
+                                    <RadzenDataGridColumn TItem="FileResourceDto" Property="FileName" Title="Файл" />
+                                    <RadzenDataGridColumn TItem="FileResourceDto" Title="Розмір">
+                                        <Template Context="f">
+                                            @FormatSize(f.SizeBytes)
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                    <RadzenDataGridColumn TItem="FileResourceDto" Title="">
+                                        <Template Context="f">
+                                            <RadzenButton Text="Завантажити"
+                                                          Icon="download"
+                                                          Size="ButtonSize.Small"
+                                                          Click="@(async () => await DownloadFile(f.Id))" />
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                </Columns>
+                            </RadzenDataGrid>
+                        }
+                        else
+                        {
+                            <p class="text-muted">Наразі немає прикріплених файлів.</p>
+                        }
+                    </div>
+                </RadzenTabsItem>
+
+                <!-- ЗАВДАННЯ ПО ТЕМІ -->
+                <RadzenTabsItem Text="Завдання по темі" Icon="assignment">
+                    <div class="tab-content-wrapper">
+                        @if (IsTeacher)
+                        {
+                            <RadzenButton Text="Створити завдання по цій темі"
+                                          Icon="add_task"
+                                          Class="btn-primary-custom"
+                                          Style="margin-bottom:10px;"
+                                          Click="@CreateAssignmentForThisMaterial" />
+                        }
+
+                        @if (material.Assignments != null && material.Assignments.Any())
+                        {
+                            <RadzenDataGrid Data="@material.Assignments"
+                                            TItem="AssignmentShortDto"
+                                            Class="glass-grid"
+                                            AllowSorting="true">
+                                <Columns>
+                                    <RadzenDataGridColumn TItem="AssignmentShortDto" Property="Title" Title="Назва">
+                                        <Template Context="a">
+                                            <RadzenLink Text="@a.Title"
+                                                        Click="@(() => OpenAssignment(a.Id))" />
+                                        </Template>
+                                    </RadzenDataGridColumn>
+
+                                    <RadzenDataGridColumn TItem="AssignmentShortDto" Title="Дедлайн">
+                                        <Template Context="a">
+                                            @if (a.DueAt != null)
+                                            {
+                                                @a.DueAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                            }
+                                            else
+                                            {
+                                                <span>Без дедлайну</span>
+                                            }
+                                        </Template>
+                                    </RadzenDataGridColumn>
+
+                                    <RadzenDataGridColumn TItem="AssignmentShortDto" Property="Status" Title="Статус" />
+                                </Columns>
+                            </RadzenDataGrid>
+                        }
+                        else
+                        {
+                            <p class="text-muted">Поки немає завдань, прив’язаних до цієї теми.</p>
+                        }
+                    </div>
+                </RadzenTabsItem>
+            </Tabs>
+        </RadzenTabs>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid ClassroomId { get; set; }
+    [Parameter] public Guid MaterialId { get; set; }
+
+    private MaterialDto? material;
+    private bool isLoading = true;
+    private string? error;
+
+    // 🔹 Токен для завантажень
+    private string? uploadToken;
+
+    private bool IsAuthenticated => CurrentUser.User != null;
+    private bool IsTeacher =>
+        CurrentUser.User?.Roles?.Any(r =>
+            string.Equals(r, "teacher", StringComparison.OrdinalIgnoreCase) ||
+            r.Contains("викладач", StringComparison.OrdinalIgnoreCase)
+        ) == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMaterial();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // зчитуємо accessToken з localStorage через ITokenProvider
+            uploadToken = await TokenProvider.GetAccessTokenAsync();
+
+            // якщо треба — можна тимчасово вивести в консоль:
+            // Console.WriteLine($"Upload token = {uploadToken}");
+
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadMaterial()
+    {
+        isLoading = true;
+        error = null;
+
+        try
+        {
+            if (!IsAuthenticated)
+                return;
+
+            material = await MaterialService.GetByIdAsync(ClassroomId, MaterialId, CancellationToken.None);
+            if (material == null)
+            {
+                error = "Матеріал не знайдено.";
+            }
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetMaterialUploadUrl()
+        => $"/api/files/upload/material/{MaterialId}?classroomId={ClassroomId}";
+
+    private async Task OnUploadCompleted(UploadCompleteEventArgs _)
+    {
+        Toast.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Файл(и) завантажено",
+            Detail = "Список файлів оновлено.",
+            Duration = 3000
+        });
+
+        await LoadMaterial();
+    }
+
+    private void OnUploadError(UploadErrorEventArgs args)
+    {
+        Toast.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Error,
+            Summary = "Помилка завантаження",
+            Detail = $"Повідомлення: {args.Message}",
+            Duration = 4000
+        });
+    }
+
+    private async Task DownloadFile(Guid fileId)
+    {
+        // беремо accessToken з localStorage
+        var token = await TokenProvider.GetAccessTokenAsync();
+
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Помилка",
+                Detail = "Немає токена авторизації. Увійдіть у систему ще раз.",
+                Duration = 4000
+            });
+            return;
+        }
+
+        // додаємо токен у query string
+        var url = $"/api/files/{fileId}/download?access_token={token}";
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    private void CreateAssignmentForThisMaterial()
+        => Nav.NavigateTo($"/classrooms/{ClassroomId}/assignments/create?materialId={MaterialId}");
+
+    private void OpenAssignment(Guid assignmentId)
+        => Nav.NavigateTo($"/classrooms/{ClassroomId}/assignments/{assignmentId}");
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        var kb = bytes / 1024d;
+        if (kb < 1024) return $"{kb:F1} KB";
+        var mb = kb / 1024d;
+        return $"{mb:F1} MB";
+    }
+}

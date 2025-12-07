@@ -1,7 +1,6 @@
-﻿namespace SmartClass.Application.Contracts.Assignments;
-
-
-public record AssignmentDto(
+﻿namespace SmartClass.Application.Contracts.Assignments
+{
+    public record AssignmentShortDto(
     Guid Id,
     Guid ClassroomId,
     Guid CreatedBy,
@@ -12,3 +11,7 @@ public record AssignmentDto(
     bool AllowLate,
     string Status
 );
+
+}
+
+

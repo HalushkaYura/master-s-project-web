@@ -2,6 +2,7 @@
 @using SmartClass.Application.Contracts.Classrooms
 @using SmartClass.Application.Abstractions
 @using SmartClass.Web.Services
+@using Radzen
 
 @inject Radzen.NotificationService Toast
 @inject Radzen.DialogService DialogService
@@ -11,23 +12,61 @@
 <EditForm Model="@vm" OnValidSubmit="@HandleSubmit">
     <DataAnnotationsValidator />
 
-    <RadzenFieldset Style="border:none; padding-left:0;">
-        <RadzenLabel Text="Назва класу" Component="Title" Style="font-weight:600; color:#0B2E6F;" />
-        <RadzenTextBox @bind-Value="vm.Title" Name="Title" Placeholder="Напр. '10-А Інформатика'" Style="width:100%; margin-bottom:6px;" />
-        <ValidationMessage For="@(() => vm.Title)" />
+    <RadzenStack Gap="1rem" Style="padding: 10px 0;">
 
-        <RadzenLabel Text="Секція / група" Component="Section" Style="font-weight:600; color:#0B2E6F; margin-top:10px;" />
-        <RadzenTextBox @bind-Value="vm.Section" Name="Section" Placeholder="Напр. 'Алгебра'" Style="width:100%; margin-bottom:6px;" />
+        <!-- Заголовок форми -->
+        <h3 style="color: var(--primary-color); font-weight: 700; font-size: 1.4rem; margin-top: 0;">Створення нового класу</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">Заповніть деталі для створення навчального простору.</p>
 
-        <RadzenLabel Text="Опис" Component="Description" Style="font-weight:600; color:#0B2E6F; margin-top:10px;" />
-        <RadzenTextArea @bind-Value="vm.Description" Name="Description" Rows="3" Placeholder="Короткий опис" Style="width:100%; margin-bottom:16px;" />
-    </RadzenFieldset>
+        <!-- Назва класу -->
+        <div>
+            <label class="form-label">Назва класу *</label>
+            <RadzenTextBox @bind-Value="vm.Title" Name="Title" Placeholder="Напр. '10-А Інформатика'" Style="width:100%;" />
+            <ValidationMessage For="@(() => vm.Title)" />
+        </div>
 
-    <div class="d-flex justify-content-end">
-        <RadzenButton Text="Створити" Icon="add" ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" IsBusy="@isBusy" />
-        <RadzenButton Text="Скасувати" Icon="close" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Click="@(() => DialogService.Close(false))" Disabled="@isBusy" />
+        <!-- Секція / група -->
+        <div>
+            <label class="form-label">Секція / Група</label>
+            <RadzenTextBox @bind-Value="vm.Section" Name="Section" Placeholder="Напр. 'Алгебра' або 'Весняний потік'" Style="width:100%;" />
+        </div>
+
+        <!-- Опис -->
+        <div>
+            <label class="form-label">Опис</label>
+            <RadzenTextArea @bind-Value="vm.Description" Name="Description" Rows="3" Placeholder="Короткий опис (необов’язково)" Style="width:100%;" />
+        </div>
+
+    </RadzenStack>
+
+    <div class="d-flex justify-content-end" style="margin-top: 2rem;">
+        <RadzenButton Text="Скасувати"
+                      Icon="close"
+                      ButtonStyle="ButtonStyle.Secondary"
+                      Variant="Variant.Outlined"
+                      Click="@(() => DialogService.Close(false))"
+                      Disabled="@isBusy"
+                      Style="border-radius: 8px; font-weight: 600; margin-right: 12px; color: var(--text-secondary); border-color: #cbd5e1;" />
+
+        <RadzenButton Text="Створити"
+                      Icon="add"
+                      Class="btn-primary-custom"
+                      ButtonType="ButtonType.Submit"
+                      IsBusy="@isBusy"
+                      Style="padding: 8px 24px !important;" />
     </div>
 </EditForm>
+
+<style>
+    /* Стиль для Label (підтягується з app.css, але тут для гарантії) */
+    .form-label {
+        color: var(--text-main);
+        font-weight: 600;
+        font-size: 0.95rem;
+        display: block;
+        margin-bottom: 4px;
+    }
+</style>
 
 @code {
     private CreateClassroomVm vm = new();
@@ -36,21 +75,11 @@
     private async Task HandleSubmit()
     {
         isBusy = true;
-
         try
         {
-            if (CurrentUser.User is null)
-            {
-                ShowError("Ви не авторизовані.");
-                return;
-            }
-
+            if (CurrentUser.User is null) { ShowError("Ви не авторизовані."); return; }
             var userIdStr = CurrentUser.User.UserId;
-            if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
-            {
-                ShowError("ID користувача недійсний.");
-                return;
-            }
+            if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId)) { ShowError("ID користувача недійсний."); return; }
 
             var dto = new CreateClassroomDto(
                 Title: vm.Title,
@@ -60,36 +89,20 @@
 
             await ClassroomService.CreateClassroomAsync(dto, userId);
 
-            Toast.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Success,
-                Summary = "Успіх",
-                Detail = "Клас створено!"
-            });
-
+            Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Успіх", Detail = "Клас створено!" });
             DialogService.Close(true);
         }
         catch (Exception ex)
         {
             var msg = ex.InnerException?.Message ?? ex.Message;
-
             ShowError(msg);
         }
-        finally
-        {
-            isBusy = false;
-        }
+        finally { isBusy = false; }
     }
 
     private void ShowError(string message)
     {
-        Toast.Notify(new NotificationMessage
-        {
-            Severity = NotificationSeverity.Error,
-            Summary = "Помилка",
-            Detail = message,
-            Duration = 5000
-        });
+        Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Помилка", Detail = message, Duration = 5000 });
     }
 
     private sealed class CreateClassroomVm
