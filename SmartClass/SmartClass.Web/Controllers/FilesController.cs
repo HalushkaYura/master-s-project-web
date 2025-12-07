@@ -192,7 +192,72 @@ namespace SmartClass.Web.Controllers
             return Ok(new { fileIds = savedIds });
         }
 
+        /// <summary>Завантаження файлів до ВІДПОВІДІ (Submission) студента</summary>
+        [HttpPost("upload/submission")]
+        [Authorize(Roles = "Student")]
+        [RequestSizeLimit(104_857_600)] // 100 MB
+        public async Task<IActionResult> UploadForSubmission(
+            [FromQuery] Guid submissionId,
+            [FromQuery] Guid classroomId,
+            [FromServices] IRepository<FileResource> filesRepo,
+            [FromServices] IRepository<Submission> submissionsRepo,
+            CancellationToken ct)
+        {
+            if (!Request.HasFormContentType || Request.Form.Files.Count == 0)
+                return BadRequest("No files uploaded.");
 
+            if (!TryGetUserId(out var userId))
+                return Forbid();
+
+            // 1. Перевіряємо, що сабміт існує і належить цьому студенту
+            var submission = await submissionsRepo.GetEntityAsync(
+                s => s.Id == submissionId,
+                includeProperties: "Assignment"); // include опціональний, якщо потрібно
+
+            if (submission is null)
+                return NotFound("Submission not found.");
+
+            if (submission.StudentId != userId)
+                return Forbid(); // чужий сабміт — забороняємо
+
+            var savedIds = new List<Guid>();
+
+            foreach (var file in Request.Form.Files)
+            {
+                using var stream = file.OpenReadStream();
+
+                var safeFileName = Path.GetFileName(file.FileName);
+
+                // Шлях у файловій системі
+                var relativePath = Path.Combine(
+                    "classrooms",
+                    classroomId.ToString(),
+                    "submissions",
+                    submissionId.ToString(),
+                    safeFileName);
+
+                var blobPath = await storage.SaveAsync(stream, relativePath, ct);
+
+                var fr = new FileResource
+                {
+                    OwnerId = userId,
+                    ClassroomId = classroomId,
+                    SubmissionId = submissionId,
+                    FileName = safeFileName,
+                    ContentType = file.ContentType ?? "application/octet-stream",
+                    SizeBytes = file.Length,
+                    BlobPath = blobPath,
+                    UploadedAt = DateTime.UtcNow
+                };
+
+                await filesRepo.AddAsync(fr);
+                savedIds.Add(fr.Id);
+            }
+
+            await filesRepo.SaveChangesAsync();
+
+            return Ok(new { fileIds = savedIds });
+        }
 
         /// <summary>Скачати файл за FileResource Id</summary>
         [HttpGet("{fileId:guid}/download")]

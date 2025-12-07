@@ -585,6 +585,164 @@ html, body {
     animation: float 3s ease-in-out infinite;
 }
 
+
+
+/* --- СТИЛІ ДЛЯ ФОРМАТОВАНОГО HTML-КОНТЕНТУ (Rich Text) --- */
+.rich-content-display {
+    line-height: 1.7;
+    color: var(--text-secondary); /* Основний колір тексту */
+    font-size: 1rem;
+    padding: 10px;
+}
+
+    .rich-content-display h1, .rich-content-display h2, .rich-content-display h3 {
+        color: var(--primary-color);
+        font-weight: 700;
+        margin-top: 1.5rem;
+        margin-bottom: 0.8rem;
+        letter-spacing: -0.01em;
+    }
+
+    .rich-content-display p {
+        margin-bottom: 1rem;
+    }
+
+    .rich-content-display ul, .rich-content-display ol {
+        padding-left: 25px;
+        margin-bottom: 1rem;
+        color: var(--text-main);
+    }
+
+    .rich-content-display pre {
+        background-color: #f1f5f9; /* Світло-сірий для блоків коду */
+        border: 1px solid #e2e8f0;
+        padding: 15px;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-family: monospace;
+        font-size: 0.9rem;
+    }
+    /*CТИЛІ СТОРІНКИ HOME*/
+/* Стилі, що не були в app.css, але потрібні тут */
+.feature-card {
+    background: rgba(255,255,255,0.5);
+    padding: 24px;
+    border-radius: 16px;
+    text-align: center;
+    height: 100%;
+    transition: transform 0.2s;
+    border: 1px solid rgba(255,255,255,0.6);
+}
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        background: rgba(255,255,255,0.8);
+    }
+
+    .feature-card .rz-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        background: rgba(0, 33, 113, 0.05);
+        padding: 15px;
+        border-radius: 50%;
+    }
+
+    .feature-card h4 {
+        color: var(--text-main);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px rgba(0,0,0,0.05);
+    }
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-main);
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.action-banner {
+    background: linear-gradient(90deg, #f8fafc 0%, #eef2ff 100%);
+    border-radius: 16px;
+    padding: 30px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 8px rgba(0, 33, 113, 0.05);
+}
+/* Стилі для секції FAQ */
+.faq-accordion {
+    border-radius: 12px !important;
+    overflow: hidden;
+    border: 1px solid rgba(0, 33, 113, 0.05);
+    box-shadow: 0 5px 15px rgba(0, 33, 113, 0.05);
+    background: rgba(255, 255, 255, 0.7);
+}
+
+    .faq-accordion .rz-accordion-item-header {
+        background: transparent !important;
+        border-bottom: 1px solid rgba(0, 33, 113, 0.05);
+        color: var(--text-main);
+        font-weight: 600;
+        padding: 15px 20px;
+    }
+
+    .faq-accordion .rz-accordion-item-content {
+        padding: 15px 20px;
+        background: rgba(255, 255, 255, 0.9);
+        color: var(--text-secondary);
+    }
+
+/* Стилі для карток контактів */
+.contact-card {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 33, 113, 0.05);
+    border-radius: 12px;
+    padding: 25px;
+    height: 100%;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+}
+
+.support-hero {
+    padding: 40px 0;
+}
+
+/* Стилі для поля пошуку */
+.rz-textbox[readonly] {
+    cursor: default !important;
+}
 /* Легка анімація левітації */
 @@keyframes float {
     0% {
@@ -600,4 +758,4 @@ html, body {
     }
 }
 
-</style >
+

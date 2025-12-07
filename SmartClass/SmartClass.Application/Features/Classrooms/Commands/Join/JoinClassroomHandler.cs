@@ -42,7 +42,7 @@ public sealed class JoinClassroomHandler : IRequestHandler<JoinClassroomCommand,
         {
             ClassroomId = classroom.Id,
             UserId = userId,
-            RoleInClass = ClassRole.Student
+            RoleInClass = ClassRole.Student.ToString()
         };
 
         await memberRepository.AddAsync(member);

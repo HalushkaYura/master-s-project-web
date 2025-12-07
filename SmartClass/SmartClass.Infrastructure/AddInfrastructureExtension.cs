@@ -122,6 +122,7 @@ public static class AddInfrastructureExtension
         services.AddScoped<IClassroomService, ClassroomService>();
         services.AddScoped<IMaterialService, MaterialService>();
         services.AddScoped<IAssignmentService, AssignmentService>();
+        services.AddScoped<ISubmissionService, SubmissionService>();
 
 
         services.Configure<FileStorageOptions>(configuration.GetSection("FileStorage"));

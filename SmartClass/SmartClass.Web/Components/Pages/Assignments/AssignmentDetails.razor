@@ -5,14 +5,18 @@
 @using SmartClass.Application.Abstractions.Auth
 @using SmartClass.Application.Contracts.Assignments
 @using SmartClass.Application.Contracts
+@using SmartClass.Application.Contracts.Submissions
 @using SmartClass.Web.Services
 @using Radzen
 
 @inject IAssignmentService AssignmentService
+@inject ISubmissionService SubmissionService
 @inject ITokenProvider TokenProvider
 @inject CurrentUserState CurrentUser
 @inject NavigationManager Nav
 @inject Radzen.NotificationService Toast
+@inject Radzen.DialogService DialogService
+@inject IJSRuntime JS
 
 <PageTitle>@(assignment is null ? "Завдання" : assignment.Title)</PageTitle>
 
@@ -21,116 +25,373 @@
     {
         <div style="display:flex;justify-content:center;align-items:center;height:300px;">
             <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate"
-                                       Size="ProgressBarCircularSize.Medium" />
+                                       Size="ProgressBarCircularSize.Medium"
+                                       Style="color: var(--primary-color);" />
         </div>
     }
     else if (!IsAuthenticated)
     {
-        <RadzenAlert Severity="AlertSeverity.Warning">
+        <RadzenAlert Severity="AlertSeverity.Warning" Variant="Variant.Flat">
             Ви повинні увійти, щоб переглядати завдання.
         </RadzenAlert>
     }
     else if (error != null)
     {
-        <RadzenAlert Severity="AlertSeverity.Error">
+        <RadzenAlert Severity="AlertSeverity.Error" Variant="Variant.Flat">
             @error
         </RadzenAlert>
     }
     else if (assignment != null)
     {
-        <div class="classroom-header" style="margin-bottom:20px;">
-            <h1 style="margin:0; color:var(--primary-color); font-weight:800;">
-                @assignment.Title
-            </h1>
+        <!-- HEADER SECTION -->
+        <div class="d-flex justify-content-between align-items-start flex-wrap"
+             style="border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 15px; margin-bottom: 25px;">
+            <div style="flex: 1; min-width: 300px;">
+                <h1 style="color: var(--primary-color); font-weight: 800; font-size: 2rem; margin: 0;">
+                    @assignment.Title
+                </h1>
 
+                <!-- Мета-інформація -->
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="15px" Style="margin-top: 5px;">
+                    <div class="meta-info-item">
+                        <RadzenIcon Icon="calendar_today" Style="font-size: 1rem; color: var(--text-muted);" />
+                        <span style="font-weight: 600; color: var(--primary-color);">
+                            @(assignment.DueAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "Без дедлайну")
+                        </span>
+                        <span style="color: var(--text-muted); font-size: 0.9rem;">(Дедлайн)</span>
+                    </div>
+                    <div class="meta-info-item">
+                        <RadzenIcon Icon="star" Style="font-size: 1rem; color: var(--text-muted);" />
+                        <span style="font-weight: 600;">@assignment.PointsMax</span>
+                        <span style="color: var(--text-muted); font-size: 0.9rem;">(Балів)</span>
+                    </div>
+                    <div class="meta-info-item">
+                        <RadzenBadge Text="@assignment.Status"
+                                     BadgeStyle="@(assignment.Status == "Published" ? BadgeStyle.Success :
+                                                                                        assignment.Status == "Closed" ? BadgeStyle.Dark :
+                                                                                        BadgeStyle.Warning)"
+                                 IsPill="true" />
+                </div>
+            </RadzenStack>
+
+                <!-- Посилання на тему -->
             @if (!string.IsNullOrWhiteSpace(assignment.MaterialTitle) && assignment.MaterialId != null)
-            {
-                <p style="margin-top:4px;">
-                    Тема:
-                    <RadzenLink Text="@assignment.MaterialTitle"
-                                Click="@(() => OpenMaterial(assignment.MaterialId.Value))" />
-                </p>
-            }
-
-            <p style="color:var(--text-secondary); margin-top:4px;">
-                Макс. бал: <b>@assignment.PointsMax</b>
-                @if (assignment.DueAt != null)
                 {
-                    <span> | Дедлайн: @assignment.DueAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                    <p style="margin-top: 10px; color: var(--text-secondary);">
+                        Тема:
+                        <RadzenLink Text="@assignment.MaterialTitle"
+                                    Click="@(() => OpenMaterial(assignment.MaterialId.Value))"
+                                    Style="font-weight: 600; color: var(--accent-color);" />
+                    </p>
                 }
-            </p>
+            </div>
 
-            <p style="font-size:0.85rem; color:var(--text-muted);">
-                Статус: @assignment.Status
-            </p>
+            <!-- ACTIONS (Викладач) -->
+            @if (IsTeacher)
+            {
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="10px" Class="rz-mt-3">
+                    <RadzenButton Text="Редагувати"
+                                  Icon="edit"
+                                  ButtonStyle="ButtonStyle.Secondary"
+                                  Variant="Variant.Outlined"
+                                  Style="border-radius: 8px;" />
+
+                    <RadzenButton Text="Видалити"
+                                  Icon="delete"
+                                  ButtonStyle="ButtonStyle.Danger"
+                                  Variant="Variant.Text"
+                                  Click="@OpenDeleteDialog" />
+
+                    @if (assignment.Status == "Draft")
+                    {
+                        <RadzenButton Text="Опублікувати"
+                                      Icon="cloud_upload"
+                                      Class="btn-primary-custom"
+                                      Click="@(() => ChangeStatus("Published"))" />
+                    }
+                    else if (assignment.Status == "Published")
+                    {
+                        <RadzenButton Text="Закрити"
+                                      Icon="lock"
+                                      ButtonStyle="ButtonStyle.Warning"
+                                      Class="btn-primary-custom"
+                                      Click="@(() => ChangeStatus("Closed"))" />
+                    }
+                </RadzenStack>
+            }
         </div>
 
-        @if (!string.IsNullOrWhiteSpace(assignment.DescriptionHtml))
-        {
-            <div class="glass-card" style="padding:16px; margin-bottom:20px;">
-                @((MarkupString)assignment.DescriptionHtml)
-            </div>
-        }
+        <!-- MAIN CONTENT LAYOUT -->
+        <RadzenRow Gap="2rem">
 
-        <RadzenTabs Style="background:transparent; box-shadow:none; border:none;">
-            <Tabs>
-                <RadzenTabsItem Text="Файли завдання" Icon="attach_file">
-                    <div class="tab-content-wrapper">
-                        @if (IsTeacher)
-                        {
+            <!-- LEFT COLUMN: Description & Files -->
+            <RadzenColumn Size="12" SizeLG="8">
+
+                <div class="content-box">
+                    <RadzenText Text="Опис завдання"
+                                TextStyle="TextStyle.H5"
+                                TagName="TagName.H4"
+                                Style="color: var(--text-main); font-weight: 700; margin-bottom: 15px;" />
+
+                    @if (!string.IsNullOrWhiteSpace(assignment.DescriptionHtml))
+                    {
+                        <div class="rich-content-display">
+                            @((MarkupString)assignment.DescriptionHtml)
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">Детальний опис відсутній.</p>
+                    }
+                </div>
+
+                <div class="content-box rz-mt-4">
+                    <RadzenText Text="Прикріплені файли (умова)"
+                                TextStyle="TextStyle.H5"
+                                TagName="TagName.H4"
+                                Style="color: var(--text-main); font-weight: 700; margin-bottom: 15px;" />
+
+                    @if (assignment.Files != null && assignment.Files.Any())
+                    {
+                        <RadzenDataGrid Data="@assignment.Files"
+                                        TItem="FileResourceDto"
+                                        Class="glass-grid">
+                            <Columns>
+                                <RadzenDataGridColumn TItem="FileResourceDto"
+                                                      Property="FileName"
+                                                      Title="Файл"
+                                                      Width="50%" />
+                                <RadzenDataGridColumn TItem="FileResourceDto"
+                                                      Title="Розмір"
+                                                      Width="20%">
+                                    <Template Context="f">@FormatSize(f.SizeBytes)</Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="FileResourceDto"
+                                                      Title="Дія"
+                                                      Width="100px">
+                                    <Template Context="f">
+                                        <RadzenButton Icon="download"
+                                                      Size="ButtonSize.Small"
+                                                      ButtonStyle="ButtonStyle.Primary"
+                                                      Variant="Variant.Text"
+                                                      Click="@(async () => await DownloadFile(f.Id))" />
+                                    </Template>
+                                </RadzenDataGridColumn>
+                            </Columns>
+                        </RadzenDataGrid>
+                    }
+                    else
+                    {
+                        <p class="text-muted">Немає прикріплених файлів.</p>
+                    }
+
+                    @if (IsTeacher)
+                    {
+                        <div class="rz-mt-3">
                             <RadzenUpload Url="@GetAssignmentUploadUrl()"
                                           Multiple="true"
-                                          Accept="*/*"
                                           Auto="true"
-                                          ChooseText="Обрати файл"
+                                          ChooseText="Додати файл (викладач)"
                                           Complete="@OnUploadCompleted"
-                                          Error="@OnUploadError"
-                                          Style="margin-bottom:10px;">
-
-                                @* Додаємо Authorization заголовок *@
+                                          Error="@OnUploadError">
                                 @if (!string.IsNullOrWhiteSpace(uploadToken))
                                 {
                                     <RadzenUploadHeader Name="Authorization"
                                                         Value="@($"Bearer {uploadToken}")" />
                                 }
                             </RadzenUpload>
-                        }
+                        </div>
+                    }
+                </div>
+            </RadzenColumn>
 
-                        @if (assignment.Files != null && assignment.Files.Any())
+            <!-- RIGHT COLUMN: Submissions -->
+            <RadzenColumn Size="12" SizeLG="4">
+
+                @if (IsTeacher)
+                {
+                    <!-- TEACHER VIEW: Submissions List -->
+                    <div class="content-box sidebar-assignments-box">
+                        <RadzenText Text="Відповіді студентів"
+                                    TextStyle="TextStyle.H5"
+                                    TagName="TagName.H4"
+                                    Style="color: var(--text-main); font-weight: 700; margin-bottom: 15px;" />
+
+                        @if (submissions == null || !submissions.Any())
                         {
-                            <RadzenDataGrid Data="@assignment.Files"
-                                            TItem="FileResourceDto"
+                            <div class="text-center text-muted p-3"
+                                 style="border: 1px dashed var(--text-muted); border-radius: 8px;">
+                                <RadzenIcon Icon="group"
+                                            Style="font-size: 1.5rem; margin-bottom: 8px;" />
+                                <p style="font-size: 0.9rem; margin: 0;">
+                                    Поки немає жодної відповіді.
+                                </p>
+                            </div>
+                        }
+                        else
+                        {
+                            <RadzenDataGrid Data="@submissions"
+                                            TItem="SubmissionListItemDto"
                                             Class="glass-grid">
                                 <Columns>
-                                    <RadzenDataGridColumn TItem="FileResourceDto" Property="FileName" Title="Файл" />
-                                    <RadzenDataGridColumn TItem="FileResourceDto" Title="Розмір">
-                                        <Template Context="f">
-                                            @FormatSize(f.SizeBytes)
+                                    <RadzenDataGridColumn TItem="SubmissionListItemDto"
+                                                          Property="StudentName"
+                                                          Title="Студент" />
+                                    <RadzenDataGridColumn TItem="SubmissionListItemDto"
+                                                          Title="Статус">
+                                        <Template Context="s">
+                                            @s.Status.ToString()
                                         </Template>
                                     </RadzenDataGridColumn>
-                                    <RadzenDataGridColumn TItem="FileResourceDto">
-                                        <Template Context="f">
-                                            <RadzenButton Text="Завантажити"
-                                                          Icon="download"
-                                                          Size="ButtonSize.Small"
-                                                          Click="@(async () => await DownloadFile(f.Id))" />
+                                    <RadzenDataGridColumn TItem="SubmissionListItemDto"
+                                                          Title="Надіслано">
+                                        <Template Context="s">
+                                            @if (s.SubmittedAt != null)
+                                            {
+                                                @s.SubmittedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                            }
+                                            else
+                                            {
+                                                <span>-</span>
+                                            }
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                    <RadzenDataGridColumn TItem="SubmissionListItemDto"
+                                                          Title="Оцінка">
+                                        <Template Context="s">
+                                            @s.Score
                                         </Template>
                                     </RadzenDataGridColumn>
                                 </Columns>
                             </RadzenDataGrid>
                         }
+                    </div>
+                }
+                else if (IsStudent)
+                {
+                    <!-- STUDENT VIEW: My Submission Panel -->
+                    <div class="content-box sidebar-assignments-box">
+                        <RadzenText Text="Ваша робота"
+                                    TextStyle="TextStyle.H5"
+                                    TagName="TagName.H4"
+                                    Style="color: var(--text-main); font-weight: 700; margin-bottom: 15px;" />
+
+                        @if (mySubmission is null)
+                        {
+                            <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate"
+                                                       Size="ProgressBarCircularSize.Small" />
+                        }
                         else
                         {
-                            <p class="text-muted">Поки немає прикріплених файлів.</p>
+                            <div class="submission-panel">
+                                <p style="font-weight: 600; color: var(--accent-color);">
+                                    Статус: @mySubmission.Status.ToString()
+                                </p>
+
+                                <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom:8px;">
+                                    @if (mySubmission.SubmittedAt != null)
+                                    {
+                                        <span>Відправлено: @mySubmission.SubmittedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Ви ще не здали роботу.</span>
+                                    }
+
+                                    @if (mySubmission.Score != null)
+                                    {
+                                        <br />
+                                        <span>Оцінка: <b>@mySubmission.Score</b></span>
+                                    }
+                                </p>
+
+                                <RadzenUpload Url="@GetSubmissionUploadUrl()"
+                                              Multiple="true"
+                                              Auto="true"
+                                              ChooseText="Прикріпити файли відповіді"
+                                              Complete="@OnSubmissionUploadCompleted"
+                                              Error="@OnSubmissionUploadError"
+                                              Style="margin-bottom:10px;">
+                                    @if (!string.IsNullOrWhiteSpace(uploadToken))
+                                    {
+                                        <RadzenUploadHeader Name="Authorization"
+                                                            Value="@($"Bearer {uploadToken}")" />
+                                    }
+                                </RadzenUpload>
+
+
+                                @if (mySubmission.Files != null && mySubmission.Files.Any())
+                                {
+                                    <RadzenDataGrid Data="@mySubmission.Files"
+                                                    TItem="FileResourceDto"
+                                                    Class="glass-grid">
+                                        <Columns>
+                                            <RadzenDataGridColumn TItem="FileResourceDto"
+                                                                  Property="FileName"
+                                                                  Title="Файл" />
+                                            <RadzenDataGridColumn TItem="FileResourceDto"
+                                                                  Title="Розмір">
+                                                <Template Context="f">
+                                                    @FormatSize(f.SizeBytes)
+                                                </Template>
+                                            </RadzenDataGridColumn>
+                                            <RadzenDataGridColumn TItem="FileResourceDto"
+                                                                  Title="">
+                                                <Template Context="f">
+                                                    <RadzenButton Icon="download"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Primary"
+                                                                  Variant="Variant.Text"
+                                                                  Click="@(async () => await DownloadFile(f.Id))" />
+                                                </Template>
+                                            </RadzenDataGridColumn>
+                                        </Columns>
+                                    </RadzenDataGrid>
+                                }
+                                else
+                                {
+                                    <p class="text-muted" style="font-size:0.85rem;">
+                                        Ви ще не додали жодного файлу до відповіді.
+                                    </p>
+                                }
+                            </div>
                         }
                     </div>
-                </RadzenTabsItem>
-
-                @* Тут пізніше можна додати вкладку "Відповіді студентів" *@
-            </Tabs>
-        </RadzenTabs>
+                }
+            </RadzenColumn>
+        </RadzenRow>
     }
 </div>
+
+<style>
+    .meta-info-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 0;
+        font-size: 0.95rem;
+    }
+
+    .content-box {
+        background: rgba(255, 255, 255, 0.7);
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .sidebar-assignments-box {
+        background: rgba(240, 245, 255, 0.9);
+        border: 1px solid var(--primary-light);
+    }
+
+    .rich-content-display {
+        border-radius: 12px;
+        padding: 12px 14px;
+        background: rgba(255,255,255,0.9);
+        border: 1px solid rgba(148,163,184,0.3);
+    }
+</style>
 
 @code {
     [Parameter] public Guid ClassroomId { get; set; }
@@ -140,28 +401,36 @@
     private bool isLoading = true;
     private string? error;
 
-    // 🔹 Токен для завантаження/завантаження файлів
+    private SubmissionDetailsDto? mySubmission;
+    private List<SubmissionListItemDto> submissions = new();
+
     private string? uploadToken;
 
     private bool IsAuthenticated => CurrentUser.User != null;
+
     private bool IsTeacher =>
         CurrentUser.User?.Roles?.Any(r =>
             string.Equals(r, "teacher", StringComparison.OrdinalIgnoreCase) ||
             r.Contains("викладач", StringComparison.OrdinalIgnoreCase)
         ) == true;
 
+    private bool IsStudent =>
+        CurrentUser.User?.Roles?.Any(r =>
+            string.Equals(r, "student", StringComparison.OrdinalIgnoreCase) ||
+            r.Contains("студент", StringComparison.OrdinalIgnoreCase)
+        ) == true;
+
     protected override async Task OnInitializedAsync()
     {
-        await LoadAssignment();
-    }
+        uploadToken = await TokenProvider.GetAccessTokenAsync();
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            uploadToken = await TokenProvider.GetAccessTokenAsync();
-            StateHasChanged();
-        }
+        await LoadAssignment();
+
+        if (IsStudent)
+            await LoadMySubmission();
+
+        if (IsTeacher)
+            await LoadSubmissionsForTeacher();
     }
 
     private async Task LoadAssignment()
@@ -176,9 +445,7 @@
 
             assignment = await AssignmentService.GetByIdAsync(ClassroomId, AssignmentId, CancellationToken.None);
             if (assignment == null)
-            {
                 error = "Завдання не знайдено.";
-            }
         }
         catch (Exception ex)
         {
@@ -190,8 +457,53 @@
         }
     }
 
+    private async Task LoadMySubmission()
+    {
+        try
+        {
+            mySubmission = await SubmissionService.EnsureForStudentAsync(
+                AssignmentId,
+                Guid.Parse(CurrentUser.User!.UserId),
+                CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Помилка завантаження відповіді",
+                Detail = ex.Message
+            });
+        }
+    }
+
+    private async Task LoadSubmissionsForTeacher()
+    {
+        try
+        {
+            submissions = (await SubmissionService.GetForAssignmentAsync(
+                AssignmentId,
+                CancellationToken.None)).ToList();
+        }
+        catch (Exception ex)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Помилка завантаження відповідей",
+                Detail = ex.Message
+            });
+        }
+    }
+
     private string GetAssignmentUploadUrl()
         => $"/api/files/upload/assignment/{AssignmentId}?classroomId={ClassroomId}";
+
+    private string GetSubmissionUploadUrl()
+    => mySubmission is null
+        ? string.Empty
+        : $"/api/files/upload/submission?submissionId={mySubmission.Id}&classroomId={ClassroomId}";
+
 
     private async Task OnUploadCompleted(UploadCompleteEventArgs _)
     {
@@ -199,7 +511,7 @@
         {
             Severity = NotificationSeverity.Success,
             Summary = "Файл(и) завантажено",
-            Detail = "Список файлів оновлено.",
+            Detail = "Список файлів завдання оновлено.",
             Duration = 3000
         });
 
@@ -212,34 +524,77 @@
         Toast.Notify(new NotificationMessage
         {
             Severity = NotificationSeverity.Error,
-            Summary = "Помилка завантаження",
+            Summary = "Помилка завантаження файлу",
             Detail = args.Message,
-            Duration = 4000
+            Duration = 5000
+        });
+    }
+
+    private async Task OnSubmissionUploadCompleted(UploadCompleteEventArgs _)
+    {
+        Toast.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Відповідь завантажено",
+            Detail = "Файли прикріплено до вашої роботи.",
+            Duration = 3000
+        });
+
+        await LoadMySubmission();
+        StateHasChanged();
+    }
+
+    private void OnSubmissionUploadError(UploadErrorEventArgs args)
+    {
+        Toast.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Error,
+            Summary = "Помилка завантаження відповіді",
+            Detail = args.Message,
+            Duration = 5000
         });
     }
 
     private async Task DownloadFile(Guid fileId)
     {
-        var token = await TokenProvider.GetAccessTokenAsync();
-
-        if (string.IsNullOrWhiteSpace(token))
-        {
-            Toast.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Error,
-                Summary = "Помилка",
-                Detail = "Немає токена авторизації. Увійдіть у систему ще раз.",
-                Duration = 4000
-            });
-            return;
-        }
-
-        var url = $"/api/files/{fileId}/download?access_token={token}";
+        var url = $"/api/files/{fileId}/download";
         Nav.NavigateTo(url, forceLoad: true);
+        await Task.CompletedTask;
     }
 
     private void OpenMaterial(Guid materialId)
         => Nav.NavigateTo($"/classrooms/{ClassroomId}/materials/{materialId}");
+
+    private async Task OpenDeleteDialog()
+    {
+        var confirm = await DialogService.Confirm(
+            "Функціонал повного видалення завдання буде реалізовано пізніше.",
+            "Підтвердження");
+
+        if (confirm == true)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Info,
+                Summary = "Видалення",
+                Detail = "Зараз видалення не реалізовано.",
+                Duration = 3000
+            });
+        }
+    }
+
+    private Task ChangeStatus(string newStatus)
+    {
+        Toast.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Info,
+            Summary = "Зміна статусу",
+            Detail = "Зміна статусу поки не реалізована на бекенді.",
+            Duration = 3000
+        });
+
+        return Task.CompletedTask;
+    }
 
     private static string FormatSize(long bytes)
     {

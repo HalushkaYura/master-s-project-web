@@ -51,7 +51,7 @@ namespace SmartClass.Infrastructure.Services
                 Id = Guid.NewGuid(),
                 ClassroomId = classroom.Id,     // посилання на щойно згенерований Id
                 UserId = ownerId,
-                RoleInClass = ClassRole.Teacher
+                RoleInClass = ClassRole.Teacher.ToString()
             };
 
             // 4) канал для класу
@@ -124,7 +124,7 @@ namespace SmartClass.Infrastructure.Services
                     Id = Guid.NewGuid(),
                     ClassroomId = classroom.Id,
                     UserId = userId,
-                    RoleInClass = ClassRole.Student
+                    RoleInClass = ClassRole.Student.ToString()
                 };
                 await db.ClassMembers.AddAsync(member, ct);
             }

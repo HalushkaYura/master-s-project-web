@@ -4,9 +4,11 @@ namespace SmartClass.Domain.Entities
 {
     public class Channel : BaseEntity
     {
-        public Guid ClassroomId { get; set; }                // 🔹 зробив not-null
+        public Guid ClassroomId { get; set; }
+
+        public string Title { get; set; } = string.Empty;
         public ChannelType Type { get; set; }
-        public string Title { get; set; } = string.Empty;    // 🔹 теж not-null
+        public string? Description { get; set; }
 
         public Classroom Classroom { get; set; } = null!;
         public ICollection<ChannelMember> Members { get; set; } = new List<ChannelMember>();

@@ -1,72 +1,60 @@
-﻿using MediatR;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SmartClass.Application.Features.Submissions.Commands.Resubmit;
-using SmartClass.Application.Features.Submissions.Commands.SubmitAssignment;
-using SmartClass.Application.Features.Submissions.Queries.GetByAssignment;
-using SmartClass.Application.Features.Submissions.Queries.GetMine;
+using SmartClass.Application.Abstractions;
+using SmartClass.Application.Contracts.Submissions;
+using System.Security.Claims;
 
-namespace SmartClass.Web.Controllers;
-
-[ApiController]
-[Route("api/[controller]")]
-public sealed class SubmissionsController : ControllerBase
+namespace SmartClass.Web.Controllers
 {
-    private readonly IMediator mediator;
-
-    public SubmissionsController(IMediator mediator) => this.mediator = mediator;
-
-    [HttpPost]
-    [Authorize(Roles = "Student")]
-    public async Task<IActionResult> Submit([FromBody] SubmitAssignmentCommand command, CancellationToken ct)
+    [ApiController]
+    [Route("api/[controller]")]
+    public sealed class SubmissionsController : ControllerBase
     {
-        var id = await mediator.Send(command, ct);
-        return Ok(new { submissionId = id });
-    }
+        private readonly ISubmissionService _service;
 
-    [HttpGet("by-assignment/{assignmentId:guid}")]
-    [Authorize(Roles = "Teacher")]
-    public async Task<IActionResult> ByAssignment(Guid assignmentId, CancellationToken ct)
-    {
-        var result = await mediator.Send(new GetSubmissionsByAssignmentQuery(assignmentId), ct);
-        return Ok(result);
-    }
-
-    [HttpGet("mine")]
-    [Authorize(Roles = "Student")]
-    public async Task<IActionResult> Mine(CancellationToken ct)
-    {
-        var result = await mediator.Send(new GetMySubmissionsQuery(), ct);
-        return Ok(result);
-    }
-
-    [HttpPost("{assignmentId:guid}/resubmit")]
-    [Authorize(Roles = "Student")]
-    [RequestSizeLimit(104857600)]
-    public async Task<IActionResult> Resubmit([FromRoute] Guid assignmentId, CancellationToken ct)
-    {
-        if (!Request.HasFormContentType || Request.Form.Files.Count == 0)
-            return BadRequest("No files uploaded.");
-
-        var files = new List<ResubmitFileItem>();
-        foreach (var f in Request.Form.Files)
+        public SubmissionsController(ISubmissionService service)
         {
-            files.Add(new ResubmitFileItem
-            {
-                FileName = f.FileName,
-                ContentType = f.ContentType,
-                SizeBytes = f.Length,
-                Content = f.OpenReadStream()
-            });
+            _service = service;
         }
 
-        var cmd = new ResubmitSubmissionCommand
+        private Guid GetUserId()
         {
-            AssignmentId = assignmentId,
-            Files = files
-        };
+            var sub = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return Guid.Parse(sub);
+        }
 
-        var id = await mediator.Send(cmd, ct);
-        return Ok(new { submissionId = id });
+        /// <summary>Студент: гарантувати існування сабміту і повернути його</summary>
+        [HttpGet("assignment/{assignmentId:guid}/me")]
+        [Authorize(Roles = "Student")]
+        public async Task<ActionResult<SubmissionDetailsDto>> GetMySubmissionForAssignment(
+            [FromRoute] Guid assignmentId,
+            CancellationToken ct)
+        {
+            var studentId = GetUserId();
+
+            var dto = await _service.EnsureForStudentAsync(assignmentId, studentId, ct);
+            return Ok(dto);
+        }
+
+        /// <summary>Викладач: список сабмітів по завданню</summary>
+        [HttpGet("assignment/{assignmentId:guid}")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<ActionResult<IReadOnlyList<SubmissionListItemDto>>> GetForAssignment(
+            [FromRoute] Guid assignmentId,
+            CancellationToken ct)
+        {
+            var list = await _service.GetForAssignmentAsync(assignmentId, ct);
+            return Ok(list);
+        }
+
+        /// <summary>Викладач: оцінити сабміт</summary>
+        [HttpPost("grade")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> Grade([FromBody] GradeSubmissionDto dto, CancellationToken ct)
+        {
+            var teacherId = GetUserId();
+            await _service.GradeAsync(dto, teacherId, ct);
+            return Ok();
+        }
     }
 }
