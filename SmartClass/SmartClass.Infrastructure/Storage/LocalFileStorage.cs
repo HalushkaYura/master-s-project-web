@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Options;
 using SmartClass.Application.Abstractions.Storage;
+using System.IO;
 
 namespace SmartClass.Infrastructure.Storage
 {
@@ -14,35 +15,50 @@ namespace SmartClass.Infrastructure.Storage
 
     public sealed class LocalFileStorage : IFileStorage
     {
-        private readonly IWebHostEnvironment env;
-        private readonly FileStorageOptions options;
+        private readonly IWebHostEnvironment _env;
+        private readonly FileStorageOptions _options;
 
         public LocalFileStorage(IWebHostEnvironment env, IOptions<FileStorageOptions> options)
         {
-            this.env = env;
-            this.options = options.Value;
+            _env = env;
+            _options = options.Value;
         }
 
+        /// <summary>
+        /// Перетворює відносний шлях (який зберігаємо в БД) на фізичний:
+        /// {webroot}/{BasePath}/{relativePath}
+        /// Напр.: wwwroot/uploads/materials/{materialId}/file.ext
+        /// </summary>
         private string GetPhysicalPath(string relativePath)
         {
-            // base = {webroot}/uploads
-            var basePath = Path.Combine(env.WebRootPath, options.BasePath);
-            return Path.Combine(basePath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            var basePath = Path.Combine(_env.WebRootPath, _options.BasePath);
+
+            var cleaned = relativePath
+                .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Replace('/', Path.DirectorySeparatorChar);
+
+            return Path.Combine(basePath, cleaned);
         }
 
-        public async Task<string> SaveAsync(Stream content, string relativePath, CancellationToken ct = default)
+        public async Task<string> SaveAsync(Stream content, string relativePath, CancellationToken ct)
         {
-            var physicalPath = GetPhysicalPath(relativePath);
+            if (content is null)
+                throw new ArgumentNullException(nameof(content));
 
+            if (string.IsNullOrWhiteSpace(relativePath))
+                throw new ArgumentException("relativePath is required", nameof(relativePath));
+
+            var physicalPath = GetPhysicalPath(relativePath);
             var dir = Path.GetDirectoryName(physicalPath)!;
             Directory.CreateDirectory(dir);
 
-            using (var fileStream = new FileStream(physicalPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            using (var fs = new FileStream(physicalPath, FileMode.Create, FileAccess.Write, FileShare.None))
             {
-                await content.CopyToAsync(fileStream, ct);
+                await content.CopyToAsync(fs, ct);
             }
 
-            // в БД зберігаємо відносний шлях від "uploads"
+            // В БД зберігаємо тільки ВІДНОСНИЙ шлях без 'uploads'
+            // Напр.: "materials/{materialIdN}/{guid.ext}"
             return relativePath.Replace('\\', '/');
         }
 
@@ -53,6 +69,7 @@ namespace SmartClass.Infrastructure.Storage
             {
                 File.Delete(physicalPath);
             }
+
             return Task.CompletedTask;
         }
 
@@ -63,7 +80,7 @@ namespace SmartClass.Infrastructure.Storage
                 throw new FileNotFoundException("File not found", physicalPath);
 
             Stream s = new FileStream(physicalPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return Task.FromResult(s);
+            return Task.FromResult<Stream>(s);
         }
     }
 }

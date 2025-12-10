@@ -29,5 +29,11 @@ namespace SmartClass.Application.Abstractions
         /// Для викладача: виставити / оновити оцінку.
         /// </summary>
         Task GradeAsync(GradeSubmissionDto dto, Guid teacherId, CancellationToken ct = default);
+
+        /// <summary>
+        /// Для студента: відправити сабміт на перевірку.
+        /// </summary>
+        Task SubmitAsync(Guid submissionId, CancellationToken ct = default);
+
     }
 }

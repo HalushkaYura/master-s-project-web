@@ -108,7 +108,12 @@
                 <div style="padding: 20px; margin-top: auto;">
                     <div style="background: rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; text-align: center; backdrop-filter: blur(5px);">
                         <p style="margin: 0 0 10px 0; font-size: 0.8rem; color: rgba(255,255,255,0.9);">Потрібна допомога?</p>
-                        <RadzenButton Text="Підтримка" Icon="help_outline" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Light" Style="width: 100%; border-radius: 8px; color: white; border-color: rgba(255,255,255,0.3); font-weight: 500;" />
+                        <RadzenButton Text="Підтримка"
+                                      Icon="help_outline"
+                                      Variant="Variant.Outlined"
+                                      ButtonStyle="ButtonStyle.Light"
+                                      Style="width: 100%; border-radius: 8px; color: white; border-color: rgba(255,255,255,0.3); font-weight: 500;"
+                                      Click="@(() => NavigationManager.NavigateTo("/support"))" />
                     </div>
                 </div>
             </RadzenSidebar>

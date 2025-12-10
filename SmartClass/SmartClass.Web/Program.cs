@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Components.Authorization;
+п»їusing Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.OpenApi.Models;
 using Radzen;
@@ -9,6 +9,7 @@ using SmartClass.Infrastructure;
 using SmartClass.Infrastructure.Data.Repositories;
 using SmartClass.Infrastructure.Services.Auth;
 using SmartClass.Web.Components;
+using SmartClass.Web.Hubs;
 using SmartClass.Web.Services;
 
 namespace SmartClass.Web
@@ -30,6 +31,27 @@ namespace SmartClass.Web
 
             // ---------- HTTP CONTEXT ----------
             builder.Services.AddHttpContextAccessor();
+            // ---------- DEFAULT HTTPCLIENT Р”Р›РЇ Р’РќРЈРўР Р†РЁРќР†РҐ API Р’РРљР›РРљР†Р’ ----------
+            builder.Services.AddScoped(sp =>
+            {
+                var httpContext = sp.GetRequiredService<IHttpContextAccessor>().HttpContext;
+
+                if (httpContext != null)
+                {
+                    var req = httpContext.Request;
+                    // РќР°РїСЂ. https://localhost:44397
+                    return new HttpClient
+                    {
+                        BaseAddress = new Uri($"{req.Scheme}://{req.Host}")
+                    };
+                }
+
+                // fallback (РЅР° РІСЃСЏРєРёР№ РІРёРїР°РґРѕРє)
+                return new HttpClient
+                {
+                    BaseAddress = new Uri("https://localhost:44397")
+                };
+            });
 
             // ---------- COOKIE POLICY ----------
             builder.Services.Configure<CookiePolicyOptions>(options =>
@@ -39,7 +61,7 @@ namespace SmartClass.Web
 
                 options.OnAppendCookie = ctx =>
                 {
-                    // всі кукі тільки по HTTPS
+                    // РІСЃС– РєСѓРєС– С‚С–Р»СЊРєРё РїРѕ HTTPS
                     ctx.CookieOptions.Secure = true;
                 };
             });
@@ -52,12 +74,12 @@ namespace SmartClass.Web
                 if (httpContext != null)
                 {
                     var req = httpContext.Request;
-                    // https://localhost:44397 (або інший хост/порт)
+                    // https://localhost:44397 (Р°Р±Рѕ С–РЅС€РёР№ С…РѕСЃС‚/РїРѕСЂС‚)
                     client.BaseAddress = new Uri($"{req.Scheme}://{req.Host}");
                 }
                 else
                 {
-                    // fallback на випадок викликів без HttpContext (наприклад, фонові задачі)
+                    // fallback РЅР° РІРёРїР°РґРѕРє РІРёРєР»РёРєС–РІ Р±РµР· HttpContext (РЅР°РїСЂРёРєР»Р°Рґ, С„РѕРЅРѕРІС– Р·Р°РґР°С‡С–)
                     client.BaseAddress = new Uri("https://localhost:44397");
                 }
             });
@@ -72,10 +94,12 @@ namespace SmartClass.Web
             builder.Services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));
 
             // ---------- RADZEN ----------
-            builder.Services.AddRadzenComponents();
+            // ---------- RADZEN ----------
+            builder.Services.AddRadzenComponents(); // <-- Р”РћР”РђР™РўР• Р¦Р•Р™ Р РЇР”РћРљ
             builder.Services.AddRazorComponents()
-                         .AddInteractiveServerComponents()
-                         .AddCircuitOptions(options => options.DetailedErrors = true); // <--- ДОДАЙТЕ ЦЕ ДЛЯ ДЕБАГУ
+                .AddInteractiveServerComponents()
+                .AddCircuitOptions(options => options.DetailedErrors = true);
+            // ...
 
             // ---------- SWAGGER ----------
             builder.Services.AddEndpointsApiExplorer();
@@ -94,7 +118,7 @@ namespace SmartClass.Web
                     Scheme = "Bearer",
                     BearerFormat = "JWT",
                     In = ParameterLocation.Header,
-                    Description = "Введіть JWT Token у форматі: Bearer {токен}"
+                    Description = "Р’РІРµРґС–С‚СЊ JWT Token Сѓ С„РѕСЂРјР°С‚С–: Bearer {С‚РѕРєРµРЅ}"
                 });
 
                 options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -114,7 +138,7 @@ namespace SmartClass.Web
             });
 
             // ---------- APPLICATION SERVICES ----------
-            builder.Services.AddScoped<IChatRealtimeSender, ChatRealtimeSender>();
+            //builder.Services.AddScoped<IChatClient, Chat>();
 
 
 
@@ -150,10 +174,12 @@ namespace SmartClass.Web
             app.MapRazorComponents<App>()
                .AddInteractiveServerRenderMode();
 
-            // Статичні файли з wwwroot (важливо для env.WebRootPath)
+            // РЎС‚Р°С‚РёС‡РЅС– С„Р°Р№Р»Рё Р· wwwroot (РІР°Р¶Р»РёРІРѕ РґР»СЏ env.WebRootPath)
             app.UseStaticFiles();
 
 
+            // вћ• Р”РћР”РђР„РњРћ hub РґР»СЏ С‡Р°С‚Сѓ
+            app.MapHub<ChatHub>("/hubs/chat");
             app.Run();
         }
     }

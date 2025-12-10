@@ -7,6 +7,7 @@
 @using SmartClass.Application.Contracts.Materials
 @using SmartClass.Application.Contracts.Assignments
 @using SmartClass.Application.Contracts
+@using SmartClass.Web.Components.Pages.Assignments
 @using SmartClass.Web.Components.Shared
 @using SmartClass.Web.Services
 @using Radzen
@@ -128,8 +129,12 @@
                         <RadzenText Text="Завдання по цій темі" TextStyle="TextStyle.H5" TagName="TagName.H4" Style="color: var(--text-main); font-weight: 700; margin: 0;" />
                         @if (IsTeacher)
                         {
-                            <RadzenButton Icon="add_task" Size="ButtonSize.Small" Class="btn-primary-custom" Click="@CreateAssignmentForThisMaterial" />
+                            <RadzenButton Icon="add_task"
+                                          Size="ButtonSize.Small"
+                                          Class="btn-primary-custom"
+                                          Click="@CreateAssignmentForThisMaterialAsync" />
                         }
+
                     </RadzenStack>
 
                     @if (material.Assignments != null && material.Assignments.Any())
@@ -278,8 +283,33 @@
         }
     }
 
-    private void CreateAssignmentForThisMaterial()
-        => Nav.NavigateTo($"/classrooms/{ClassroomId}/assignments/create?materialId={MaterialId}&materialTitle={material.Title}");
+    private async Task CreateAssignmentForThisMaterialAsync()
+    {
+        if (material is null)
+            return;
+
+        var result = await DialogService.OpenAsync<AssignmentCreateDialog>(
+            "Нове завдання для теми",
+            new Dictionary<string, object>
+            {
+                ["ClassroomId"] = ClassroomId,
+                ["MaterialId"] = MaterialId,              // 👈 Прив’язуємо до цього матеріалу
+                ["MaterialTitle"] = material.Title        // 👈 Для красивого тексту в діалозі
+            },
+            new DialogOptions
+            {
+                Width = "600px",
+                Resizable = true,
+                Draggable = true
+            });
+
+        if (result is bool ok && ok)
+        {
+            // оновлюємо матеріал, щоб у правій колонці з’явилося нове завдання
+            await LoadMaterial();
+            StateHasChanged();
+        }
+    }
 
     private void OpenAssignment(Guid assignmentId)
         => Nav.NavigateTo($"/classrooms/{ClassroomId}/assignments/{assignmentId}");

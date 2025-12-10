@@ -6,8 +6,9 @@ namespace SmartClass.Application.Contracts.Submissions
         Guid Id,
         Guid StudentId,
         string StudentName,
-        DateTime? SubmittedAt,
         SubmissionStatus Status,
+        DateTime? SubmittedAt,
         decimal? Score
     );
 }
+

@@ -6,6 +6,7 @@
 @using SmartClass.Application.Contracts.Assignments
 @using SmartClass.Application.Contracts
 @using SmartClass.Application.Contracts.Submissions
+@using SmartClass.Domain.Enums
 @using SmartClass.Web.Services
 @using Radzen
 
@@ -67,9 +68,11 @@
                     </div>
                     <div class="meta-info-item">
                         <RadzenBadge Text="@assignment.Status"
-                                     BadgeStyle="@(assignment.Status == "Published" ? BadgeStyle.Success :
-                                                                                        assignment.Status == "Closed" ? BadgeStyle.Dark :
-                                                                                        BadgeStyle.Warning)"
+                                     BadgeStyle="@(assignment.Status == "Published"
+                                                                                        ? BadgeStyle.Success
+                                                                                        : assignment.Status == "Closed"
+                                                                                          ? BadgeStyle.Dark
+                                                                                          : BadgeStyle.Warning)"
                                  IsPill="true" />
                 </div>
             </RadzenStack>
@@ -210,7 +213,7 @@
 
                 @if (IsTeacher)
                 {
-                    <!-- TEACHER VIEW: Submissions List -->
+                    <!-- TEACHER VIEW: Submissions List + grade panel -->
                     <div class="content-box sidebar-assignments-box">
                         <RadzenText Text="Відповіді студентів"
                                     TextStyle="TextStyle.H5"
@@ -232,7 +235,8 @@
                         {
                             <RadzenDataGrid Data="@submissions"
                                             TItem="SubmissionListItemDto"
-                                            Class="glass-grid">
+                                            Class="glass-grid"
+                                            RowClick="@OnSubmissionRowClick">
                                 <Columns>
                                     <RadzenDataGridColumn TItem="SubmissionListItemDto"
                                                           Property="StudentName"
@@ -264,6 +268,42 @@
                                     </RadzenDataGridColumn>
                                 </Columns>
                             </RadzenDataGrid>
+
+                            @if (selectedSubmission != null)
+                            {
+                                <div class="rz-mt-3"
+                                     style="border-top:1px solid rgba(148,163,184,0.4); padding-top:10px;">
+                                    <RadzenText Text="Оцінювання відповіді"
+                                                TextStyle="TextStyle.Subtitle2"
+                                                Style="font-weight:700; margin-bottom:8px;" />
+                                    <p style="font-size:0.9rem; margin-bottom:6px;">
+                                        Студент: <b>@selectedSubmission.StudentName</b>
+                                    </p>
+
+                                    <RadzenLabel Text="Оцінка" />
+                                    <RadzenNumeric @bind-Value="gradeValue"
+                                                   Min="0"
+                                                   Max="@assignment.PointsMax"
+                                                   Style="width:100%; margin-bottom:6px;" />
+
+                                    <RadzenLabel Text="Коментар викладача" />
+                                    <RadzenTextArea @bind-Value="gradeComment"
+                                                    Rows="3"
+                                                    Style="width:100%; margin-bottom:8px;" />
+
+                                    <div style="display:flex; gap:8px; justify-content:flex-end;">
+                                        <RadzenButton Text="Скасувати"
+                                                      Icon="close"
+                                                      ButtonStyle="ButtonStyle.Light"
+                                                      Variant="Variant.Outlined"
+                                                      Click="@ClearGradeForm" />
+                                        <RadzenButton Text="Зберегти оцінку"
+                                                      Icon="check"
+                                                      Class="btn-primary-custom"
+                                                      Click="@SaveGradeAsync" />
+                                    </div>
+                                </div>
+                            }
                         }
                     </div>
                 }
@@ -302,9 +342,15 @@
                                     {
                                         <br />
                                         <span>Оцінка: <b>@mySubmission.Score</b></span>
+                                        @if (!string.IsNullOrWhiteSpace(mySubmission.TeacherComment))
+                                        {
+                                            <br />
+                                            <span>Коментар: @mySubmission.TeacherComment</span>
+                                        }
                                     }
                                 </p>
 
+                                <!-- Upload files -->
                                 <RadzenUpload Url="@GetSubmissionUploadUrl()"
                                               Multiple="true"
                                               Auto="true"
@@ -319,12 +365,18 @@
                                     }
                                 </RadzenUpload>
 
+                                <!-- Button 'Submit work' -->
+                                <RadzenButton Text="Здати роботу"
+                                              Icon="send"
+                                              Class="btn-primary-custom rz-mt-2"
+                                              Disabled="@(!CanSubmitNow)"
+                                              Click="@SubmitMyWorkAsync" />
 
                                 @if (mySubmission.Files != null && mySubmission.Files.Any())
                                 {
                                     <RadzenDataGrid Data="@mySubmission.Files"
                                                     TItem="FileResourceDto"
-                                                    Class="glass-grid">
+                                                    Class="glass-grid rz-mt-3">
                                         <Columns>
                                             <RadzenDataGridColumn TItem="FileResourceDto"
                                                                   Property="FileName"
@@ -350,7 +402,7 @@
                                 }
                                 else
                                 {
-                                    <p class="text-muted" style="font-size:0.85rem;">
+                                    <p class="text-muted" style="font-size:0.85rem; margin-top:8px;">
                                         Ви ще не додали жодного файлу до відповіді.
                                     </p>
                                 }
@@ -404,6 +456,11 @@
     private SubmissionDetailsDto? mySubmission;
     private List<SubmissionListItemDto> submissions = new();
 
+    // Для оцінювання (викладач):
+    private SubmissionListItemDto? selectedSubmission;
+    private decimal? gradeValue;
+    private string? gradeComment;
+
     private string? uploadToken;
 
     private bool IsAuthenticated => CurrentUser.User != null;
@@ -419,6 +476,14 @@
             string.Equals(r, "student", StringComparison.OrdinalIgnoreCase) ||
             r.Contains("студент", StringComparison.OrdinalIgnoreCase)
         ) == true;
+
+    private bool CanSubmitNow =>
+        mySubmission != null
+        && (mySubmission.Status == SubmissionStatus.NotSubmitted
+            || mySubmission.Status == SubmissionStatus.ReturnedForRevision
+            || mySubmission.Status == SubmissionStatus.Submitted)
+        && mySubmission.Files != null
+        && mySubmission.Files.Count > 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -500,10 +565,9 @@
         => $"/api/files/upload/assignment/{AssignmentId}?classroomId={ClassroomId}";
 
     private string GetSubmissionUploadUrl()
-    => mySubmission is null
-        ? string.Empty
-        : $"/api/files/upload/submission?submissionId={mySubmission.Id}&classroomId={ClassroomId}";
-
+        => mySubmission is null
+            ? string.Empty
+            : $"/api/files/upload/submission?submissionId={mySubmission.Id}&classroomId={ClassroomId}";
 
     private async Task OnUploadCompleted(UploadCompleteEventArgs _)
     {
@@ -594,6 +658,133 @@
         });
 
         return Task.CompletedTask;
+    }
+
+    // ====== STUDENT: SUBMIT WORK ======
+    private async Task SubmitMyWorkAsync()
+    {
+        if (mySubmission is null)
+            return;
+
+        if (!CanSubmitNow)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Не можна здати роботу",
+                Detail = "Прикріпіть хоча б один файл перед здачею.",
+                Duration = 4000
+            });
+            return;
+        }
+
+        try
+        {
+            await SubmissionService.SubmitAsync(mySubmission.Id, CancellationToken.None);
+
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Роботу здано",
+                Detail = "Ваша відповідь відправлена викладачу.",
+                Duration = 4000
+            });
+
+            await LoadMySubmission();
+            if (IsTeacher)
+                await LoadSubmissionsForTeacher();
+        }
+        catch (Exception ex)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Помилка здачі роботи",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+    }
+
+    // ====== TEACHER: CHOOSE SUBMISSION & GRADE ======
+    private void OnSubmissionRowClick(DataGridRowMouseEventArgs<SubmissionListItemDto> args)
+    {
+        selectedSubmission = args.Data;
+        gradeValue = selectedSubmission.Score;
+        gradeComment = null;
+    }
+
+    private void ClearGradeForm()
+    {
+        selectedSubmission = null;
+        gradeValue = null;
+        gradeComment = null;
+    }
+
+    private async Task SaveGradeAsync()
+    {
+        if (selectedSubmission == null)
+            return;
+
+        if (!gradeValue.HasValue)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Оцінка не вказана",
+                Detail = "Введіть бал перед збереженням.",
+                Duration = 4000
+            });
+            return;
+        }
+
+        if (CurrentUser.User is null || !Guid.TryParse(CurrentUser.User.UserId, out var teacherId))
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Помилка",
+                Detail = "Некоректний викладач.",
+                Duration = 4000
+            });
+            return;
+        }
+
+        try
+        {
+            var dto = new GradeSubmissionDto(
+                selectedSubmission.Id,
+                gradeValue.Value,
+                gradeComment
+            );
+
+            await SubmissionService.GradeAsync(dto, teacherId, CancellationToken.None);
+
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Оцінка збережена",
+                Detail = "Оцінка успішно виставлена.",
+                Duration = 4000
+            });
+
+            await LoadSubmissionsForTeacher();
+
+            if (IsStudent)
+                await LoadMySubmission();
+
+            ClearGradeForm();
+        }
+        catch (Exception ex)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Помилка збереження оцінки",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
     }
 
     private static string FormatSize(long bytes)

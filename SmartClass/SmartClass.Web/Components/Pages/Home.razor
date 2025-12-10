@@ -27,7 +27,7 @@
         </p>
 
         <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="1rem">
-            <RadzenButton Text="Почати навчання" Class="btn-primary-custom" Style="padding: 12px 32px; font-size: 1.1rem;" Click="@(() => Nav.NavigateTo("/register"))" />
+            <RadzenButton Text="Почати навчання" class="btn-primary-custom" Style="padding: 12px 32px; font-size: 1.1rem;" Click="@(() => Nav.NavigateTo("/register"))" />
             <RadzenButton Text="Увійти" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Primary" Style="padding: 12px 32px; border-radius: 10px; font-weight: 600;" Click="@(() => Nav.NavigateTo("/login"))" />
         </RadzenStack>
     </div>
@@ -121,7 +121,7 @@ else
             <RadzenStack Orientation="Orientation.Horizontal" Gap="10px" Style="margin-top: 15px;">
                 @if (IsTeacher)
                 {
-                    <RadzenButton Text="Створити клас" Icon="add" Class="btn-primary-custom" 
+                    <RadzenButton Text="Створити клас" Icon="add" class="btn-primary-custom" 
                                   Click="@OpenCreateDialog" />
                     <RadzenButton Text="Перевірити класи" Icon="class" ButtonStyle="ButtonStyle.Info" 
                                   Variant="Variant.Outlined" Style="border-radius: 10px; font-weight: 600;" 

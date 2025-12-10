@@ -4,6 +4,7 @@ using SmartClass.Application.Abstractions;
 using SmartClass.Application.Abstractions.Storage;
 using SmartClass.Domain.Entities;
 using System.Security.Claims;
+using System.IO;
 
 namespace SmartClass.Web.Controllers
 {
@@ -31,11 +32,16 @@ namespace SmartClass.Web.Controllers
             return false;
         }
 
+        private static string BuildStorageName(string originalName)
+        {
+            var ext = Path.GetExtension(originalName);
+            return $"{Guid.NewGuid():N}{ext}";
+        }
 
         /// <summary>Завантаження файлів до МАТЕРІАЛУ</summary>
         [HttpPost("upload/material/{materialId:guid}")]
         [Authorize(Roles = "Teacher")]
-        [RequestSizeLimit(104_857_600)]
+        [RequestSizeLimit(104_857_600)] // 100 MB
         public async Task<IActionResult> UploadForMaterial(
             [FromRoute] Guid materialId,
             [FromQuery] Guid classroomId,
@@ -54,25 +60,26 @@ namespace SmartClass.Web.Controllers
             {
                 using var stream = file.OpenReadStream();
 
-                var safeFileName = Path.GetFileName(file.FileName);
+                var originalName = Path.GetFileName(file.FileName);
+                var storageName = BuildStorageName(originalName);
+
+                // ⚡ Короткий відносний шлях (без "uploads")
                 var relativePath = Path.Combine(
-                    "classrooms",
-                    classroomId.ToString(),
                     "materials",
-                    materialId.ToString(),
-                    safeFileName);
+                    materialId.ToString("N"),
+                    storageName);
 
                 var blobPath = await storage.SaveAsync(stream, relativePath, ct);
 
                 var fr = new FileResource
                 {
-                    OwnerId = ownerId,          // тут буде c80627f2-...
+                    OwnerId = ownerId,
                     ClassroomId = classroomId,
                     MaterialId = materialId,
-                    FileName = safeFileName,
+                    FileName = originalName, // те, що бачить користувач
                     ContentType = file.ContentType ?? "application/octet-stream",
                     SizeBytes = file.Length,
-                    BlobPath = blobPath,
+                    BlobPath = blobPath,     // короткий відносний шлях
                     UploadedAt = DateTime.UtcNow
                 };
 
@@ -83,8 +90,6 @@ namespace SmartClass.Web.Controllers
             await repo.SaveChangesAsync();
             return Ok(new { fileIds = savedIds });
         }
-
-
 
         /// <summary>Завантаження файлів до ЗАВДАННЯ</summary>
         [HttpPost("upload/assignment/{assignmentId:guid}")]
@@ -108,13 +113,13 @@ namespace SmartClass.Web.Controllers
             {
                 using var stream = file.OpenReadStream();
 
-                var safeFileName = Path.GetFileName(file.FileName);
+                var originalName = Path.GetFileName(file.FileName);
+                var storageName = BuildStorageName(originalName);
+
                 var relativePath = Path.Combine(
-                    "classrooms",
-                    classroomId.ToString(),
                     "assignments",
-                    assignmentId.ToString(),
-                    safeFileName);
+                    assignmentId.ToString("N"),
+                    storageName);
 
                 var blobPath = await storage.SaveAsync(stream, relativePath, ct);
 
@@ -123,7 +128,7 @@ namespace SmartClass.Web.Controllers
                     OwnerId = ownerId,
                     ClassroomId = classroomId,
                     AssignmentId = assignmentId,
-                    FileName = safeFileName,
+                    FileName = originalName,
                     ContentType = file.ContentType ?? "application/octet-stream",
                     SizeBytes = file.Length,
                     BlobPath = blobPath,
@@ -137,6 +142,7 @@ namespace SmartClass.Web.Controllers
             await repo.SaveChangesAsync();
             return Ok(new { fileIds = savedIds });
         }
+
         /// <summary>
         /// Тимчасове завантаження файлів для класу під час створення матеріалу/завдання.
         /// Файли будуть без MaterialId/AssignmentId, але зафіксовані за Classroom + Owner.
@@ -161,12 +167,13 @@ namespace SmartClass.Web.Controllers
             {
                 using var stream = file.OpenReadStream();
 
-                var safeFileName = Path.GetFileName(file.FileName);
+                var originalName = Path.GetFileName(file.FileName);
+                var storageName = BuildStorageName(originalName);
+
                 var relativePath = Path.Combine(
-                    "classrooms",
-                    classroomId.ToString(),
                     "temp",
-                    $"{Guid.NewGuid()}_{safeFileName}");
+                    classroomId.ToString("N"),
+                    storageName);
 
                 var blobPath = await storage.SaveAsync(stream, relativePath, ct);
 
@@ -177,7 +184,7 @@ namespace SmartClass.Web.Controllers
                     MaterialId = null,
                     AssignmentId = null,
                     SubmissionId = null,
-                    FileName = safeFileName,
+                    FileName = originalName,
                     ContentType = file.ContentType ?? "application/octet-stream",
                     SizeBytes = file.Length,
                     BlobPath = blobPath,
@@ -198,7 +205,6 @@ namespace SmartClass.Web.Controllers
         [RequestSizeLimit(104_857_600)] // 100 MB
         public async Task<IActionResult> UploadForSubmission(
             [FromQuery] Guid submissionId,
-            [FromQuery] Guid classroomId,
             [FromServices] IRepository<FileResource> filesRepo,
             [FromServices] IRepository<Submission> submissionsRepo,
             CancellationToken ct)
@@ -212,7 +218,7 @@ namespace SmartClass.Web.Controllers
             // 1. Перевіряємо, що сабміт існує і належить цьому студенту
             var submission = await submissionsRepo.GetEntityAsync(
                 s => s.Id == submissionId,
-                includeProperties: "Assignment"); // include опціональний, якщо потрібно
+                includeProperties: "Assignment");
 
             if (submission is null)
                 return NotFound("Submission not found.");
@@ -226,24 +232,22 @@ namespace SmartClass.Web.Controllers
             {
                 using var stream = file.OpenReadStream();
 
-                var safeFileName = Path.GetFileName(file.FileName);
+                var originalName = Path.GetFileName(file.FileName);
+                var storageName = BuildStorageName(originalName);
 
-                // Шлях у файловій системі
                 var relativePath = Path.Combine(
-                    "classrooms",
-                    classroomId.ToString(),
                     "submissions",
-                    submissionId.ToString(),
-                    safeFileName);
+                    submissionId.ToString("N"),
+                    storageName);
 
                 var blobPath = await storage.SaveAsync(stream, relativePath, ct);
 
                 var fr = new FileResource
                 {
                     OwnerId = userId,
-                    ClassroomId = classroomId,
+                    ClassroomId = submission.Assignment.ClassroomId,
                     SubmissionId = submissionId,
-                    FileName = safeFileName,
+                    FileName = originalName,
                     ContentType = file.ContentType ?? "application/octet-stream",
                     SizeBytes = file.Length,
                     BlobPath = blobPath,
@@ -261,18 +265,28 @@ namespace SmartClass.Web.Controllers
 
         /// <summary>Скачати файл за FileResource Id</summary>
         [HttpGet("{fileId:guid}/download")]
-        [Authorize(Roles = "Teacher,Student")] 
+        [Authorize]
         public async Task<IActionResult> Download(
             [FromRoute] Guid fileId,
-            [FromServices] IRepository<FileResource> repo,
+            [FromServices] IRepository<FileResource> filesRepo,
+            [FromServices] IFileStorage storage,
             CancellationToken ct)
         {
-            var fr = await repo.GetByKeyAsync(fileId);
-            if (fr is null) return NotFound();
+            var file = await filesRepo.GetByKeyAsync(fileId);
+            if (file is null)
+                return NotFound();
 
-            var stream = await storage.OpenReadAsync(fr.BlobPath, ct);
-            return File(stream, fr.ContentType, fr.FileName);
+            var stream = await storage.OpenReadAsync(file.BlobPath, ct);
+
+            var contentType = string.IsNullOrWhiteSpace(file.ContentType)
+                ? "application/octet-stream"
+                : file.ContentType;
+
+            var downloadName = string.IsNullOrWhiteSpace(file.FileName)
+                ? "file"
+                : file.FileName;
+
+            return File(stream, contentType, downloadName);
         }
-
     }
 }

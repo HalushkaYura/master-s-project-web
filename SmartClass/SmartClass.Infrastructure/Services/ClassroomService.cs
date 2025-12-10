@@ -60,7 +60,7 @@ namespace SmartClass.Infrastructure.Services
                 Id = Guid.NewGuid(),
                 ClassroomId = classroom.Id,
                 Type = ChannelType.Class,
-                Title = "Груповий чат учасників класу"
+                Title = "Чат класу"
             };
 
             // 5) викладач як учасник каналу

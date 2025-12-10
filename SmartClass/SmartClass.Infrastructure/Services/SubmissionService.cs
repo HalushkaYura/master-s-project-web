@@ -15,20 +15,23 @@ namespace SmartClass.Infrastructure.Services
         private readonly IRepository<Assignment> _assignments;
         private readonly IRepository<FileResource> _files;
         private readonly IRepository<Grade> _grades;
-        private readonly IDbContextFactory<AppDbContext> dbFactory;
+        private readonly IDbContextFactory<AppDbContext> _dbFactory;
+        private readonly IUserService _userService;
 
         public SubmissionService(
             IRepository<Submission> submissions,
             IRepository<Assignment> assignments,
             IRepository<FileResource> files,
             IRepository<Grade> grades,
-            IDbContextFactory<AppDbContext> dbFactory)
+            IDbContextFactory<AppDbContext> dbFactory,
+            IUserService userService)
         {
             _submissions = submissions;
             _assignments = assignments;
             _files = files;
             _grades = grades;
-            this.dbFactory = dbFactory;
+            _dbFactory = dbFactory;
+            _userService = userService;
         }
 
         public async Task<SubmissionDetailsDto> EnsureForStudentAsync(
@@ -36,11 +39,14 @@ namespace SmartClass.Infrastructure.Services
             Guid studentId,
             CancellationToken ct = default)
         {
-            await using var _db = await dbFactory.CreateDbContextAsync(ct);
-            var existing = await _db.Submissions
+            await using var db = await _dbFactory.CreateDbContextAsync(ct);
+
+            var existing = await db.Submissions
                 .Include(s => s.Files)
                 .Include(s => s.Grade)
-                .FirstOrDefaultAsync(s => s.AssignmentId == assignmentId && s.StudentId == studentId, ct);
+                .FirstOrDefaultAsync(
+                    s => s.AssignmentId == assignmentId && s.StudentId == studentId,
+                    ct);
 
             if (existing is null)
             {
@@ -57,6 +63,9 @@ namespace SmartClass.Infrastructure.Services
                 await _submissions.SaveChangesAsync();
             }
 
+            // Підтягуємо ім'я студента
+            var studentName = await GetStudentNameSafeAsync(studentId.ToString());
+
             var files = existing.Files
                 .Select(f => new FileResourceDto
                 {
@@ -72,7 +81,7 @@ namespace SmartClass.Infrastructure.Services
                 existing.Id,
                 existing.AssignmentId,
                 existing.StudentId,
-                StudentName: "", // можна заповнити через join до AspNetUsers або окремим сервісом
+                studentName,
                 existing.Status,
                 existing.SubmittedAt,
                 existing.Grade?.Score,
@@ -83,14 +92,16 @@ namespace SmartClass.Infrastructure.Services
 
         public async Task<SubmissionDetailsDto?> GetByIdAsync(Guid submissionId, CancellationToken ct = default)
         {
+            await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
-            await using var _db = await dbFactory.CreateDbContextAsync(ct);
-            var s = await _db.Submissions
+            var s = await db.Submissions
                 .Include(x => x.Files)
                 .Include(x => x.Grade)
                 .FirstOrDefaultAsync(x => x.Id == submissionId, ct);
 
             if (s is null) return null;
+
+            var studentName = await GetStudentNameSafeAsync(s.StudentId.ToString());
 
             var files = s.Files
                 .Select(f => new FileResourceDto
@@ -107,7 +118,7 @@ namespace SmartClass.Infrastructure.Services
                 s.Id,
                 s.AssignmentId,
                 s.StudentId,
-                StudentName: "",
+                studentName,
                 s.Status,
                 s.SubmittedAt,
                 s.Grade?.Score,
@@ -120,27 +131,45 @@ namespace SmartClass.Infrastructure.Services
             Guid assignmentId,
             CancellationToken ct = default)
         {
-            await using var _db = await dbFactory.CreateDbContextAsync(ct);
-            var list = await _db.Submissions
+            await using var db = await _dbFactory.CreateDbContextAsync(ct);
+
+            var list = await db.Submissions
                 .Include(s => s.Grade)
                 .Where(s => s.AssignmentId == assignmentId)
                 .ToListAsync(ct);
 
-            return list.Select(s =>
+            // Унікальні студенти по завданню
+            var studentIds = list
+                .Select(s => s.StudentId)
+                .Distinct()
+                .ToList();
+
+            var names = new Dictionary<Guid, string>();
+
+            foreach (var sid in studentIds)
+            {
+                var name = await GetStudentNameSafeAsync(sid.ToString());
+                names[sid] = name;
+            }
+
+            var result = list.Select(s =>
                 new SubmissionListItemDto(
-                    s.Id,
-                    s.StudentId,
-                    StudentName: "", // аналогічно — можна підтягти з AspNetUsers
-                    s.SubmittedAt,
-                    s.Status,
-                    s.Grade?.Score
+                    Id: s.Id,
+                    StudentId: s.StudentId,
+                    StudentName: names.TryGetValue(s.StudentId, out var n) ? n : string.Empty,
+                    Status: s.Status,
+                    SubmittedAt: s.SubmittedAt,
+                    Score: s.Grade?.Score
                 )).ToList();
+
+            return result;
         }
 
         public async Task GradeAsync(GradeSubmissionDto dto, Guid teacherId, CancellationToken ct = default)
         {
-            await using var _db = await dbFactory.CreateDbContextAsync(ct);
-            var s = await _db.Submissions
+            await using var db = await _dbFactory.CreateDbContextAsync(ct);
+
+            var s = await db.Submissions
                 .Include(x => x.Grade)
                 .FirstOrDefaultAsync(x => x.Id == dto.SubmissionId, ct);
 
@@ -175,6 +204,43 @@ namespace SmartClass.Infrastructure.Services
 
             await _submissions.UpdateAsync(s);
             await _submissions.SaveChangesAsync();
+        }
+
+        public async Task SubmitAsync(Guid submissionId, CancellationToken ct = default)
+        {
+            // Використаємо репозиторій, як і в інших методах
+            var s = await _submissions.GetByKeyAsync(submissionId);
+            if (s is null)
+                throw new InvalidOperationException("Submission not found");
+
+            s.SubmittedAt = DateTime.UtcNow;
+
+            // Якщо ще не оцінено – ставимо Submitted
+            if (s.Status != SubmissionStatus.Graded)
+            {
+                s.Status = SubmissionStatus.Submitted;
+            }
+
+            await _submissions.UpdateAsync(s);
+            await _submissions.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Безпечне отримання ПІБ студента. Якщо не знайдено – повертає пустий рядок.
+        /// </summary>
+        private async Task<string> GetStudentNameSafeAsync(string userId)
+        {
+            try
+            {
+                var info = await _userService.UserInfoAsync(userId);
+                // Можеш поміняти формат як хочеш
+                var fullName = $"{info.Lastname} {info.Firstname}".Trim();
+                return string.IsNullOrWhiteSpace(fullName) ? info.Email : fullName;
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
     }
 }

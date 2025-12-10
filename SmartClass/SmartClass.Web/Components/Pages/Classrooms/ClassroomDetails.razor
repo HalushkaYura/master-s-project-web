@@ -4,6 +4,7 @@
 @using SmartClass.Application.Abstractions
 @using SmartClass.Application.Contracts.Classrooms
 @using SmartClass.Web.Components.Pages.Classrooms.Tabs
+@using SmartClass.Web.Components.Shared
 @using SmartClass.Web.Services
 @using Radzen
 @using SmartClass.Web.Components.Pages.Materials
@@ -89,7 +90,17 @@
                         </p>
                     }
                 </div>
-
+                <div>
+                    @if (!IsTeacher)
+                    {
+                        <RadzenButton Text="Мої оцінки"
+                                      Icon="grading"
+                                      ButtonStyle="ButtonStyle.Secondary"
+                                      Style="color: whitesmoke"
+                                      Variant="Variant.Outlined"
+                                      Click="@(() => Nav.NavigateTo($"/classrooms/{ClassroomId}/my-grades"))" />
+                    }
+                </div>
                 <!-- Invite Code Box -->
                 <div class="invite-card">
                     <span class="invite-label">Код приєднання</span>
@@ -115,28 +126,30 @@
                 <RadzenStack Orientation="Orientation.Horizontal" Gap="10px" Wrap="FlexWrap.Wrap">
                     <RadzenButton Text="Нове завдання"
                                   Icon="add_task"
-                                  Class="btn-primary-custom"
+                                  ButtonStyle="ButtonStyle.Success"
+                                  Style="lighting-color"
                                   Click="@OpenCreateAssignmentDialog" />
 
                     <RadzenButton Text="Додати матеріал"
                                   Icon="library_add"
-                                  ButtonStyle="ButtonStyle.Secondary"
+                                  ButtonStyle="ButtonStyle.Success"
                                   Variant="Variant.Outlined"
-                                  Style="border-radius: 10px; color: var(--text-secondary); border-color: #cbd5e1; font-weight: 600;"
+                                  Style="border-radius: 10px; color: var(--text-light); border-color: #cbd5e1; font-weight: 600;"
                                   Click="@OpenCreateMaterialDialog" />
 
                     <div style="flex: 1;"></div>
 
                     <RadzenButton Text="Редагувати клас"
                                   Icon="edit"
-                                  ButtonStyle="ButtonStyle.Light"
+                                  ButtonStyle="ButtonStyle.Warning"
                                   Variant="Variant.Flat"
                                   Style="color: var(--text-secondary);" />
-                    <RadzenButton Text="Налаштування"
-                                  Icon="settings"
-                                  ButtonStyle="ButtonStyle.Light"
-                                  Variant="Variant.Flat"
-                                  Style="color: var(--text-secondary);" />
+                    <RadzenButton Text="Видалити клас"
+                                  Icon="delete"
+                                  Variant="Variant.Text"
+                                  ButtonStyle="ButtonStyle.Danger"
+                                  Style="color: #ef4444;"
+                                  Click="OpenDeleteClassDialog" />
                 </RadzenStack>
             </div>
         }
@@ -234,8 +247,44 @@
                                                  IsTeacher="IsTeacher" />
                     </div>
                 </RadzenTabsItem>
+
+                <!-- Журнал -->
+                @if (IsTeacher)
+                {
+                    <RadzenTabsItem Text="Журнал оцінок" Icon="table_chart">
+                        <RadzenButton Text="Відкрити журнал"
+                                      Icon="open_in_new"
+                                      Style="color: whitesmoke"
+                                      ButtonStyle="ButtonStyle.Primary"
+                                      Click="@(() => Nav.NavigateTo($"/classrooms/{ClassroomId}/gradebook"))" />
+                    </RadzenTabsItem>
+                }
             </Tabs>
         </RadzenTabs>
+    }
+</div>
+<!-- FLOATING CHAT WIDGET -->
+<div class="floating-chat-container">
+    @if (IsAuthenticated)
+    {
+        <!-- КНОПКА: Відкриває панель чату -->
+        <RadzenButton Icon="forum" 
+                      Class="floating-chat-button"
+                      Click="@(() => isChatOpen = !isChatOpen)"
+                      Style="background-color: var(--accent-color) !important; box-shadow: 0 4px 10px rgba(66, 165, 245, 0.4);" />
+
+        <!-- ПАНЕЛЬ ЧАТУ -->
+        <div class="chat-sidebar-panel @(isChatOpen ? "open" : "")">
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center" Style="padding: 10px; border-bottom: 1px solid rgba(0,0,0,0.1);">
+                <span style="font-weight: 700; color: var(--primary-color);">Чат класу</span>
+                <RadzenButton Icon="close" Variant="Variant.Text" ButtonStyle="ButtonStyle.Secondary" Click="@(() => isChatOpen = false)" />
+            </RadzenStack>
+            
+            <div style="flex: 1; overflow: hidden; padding: 10px;">
+                <!-- ВСТАВЛЯЄМО КОМПОНЕНТ ЧАТУ СЮДИ -->
+                <ClassroomChatPanel ClassroomId="ClassroomId" /> 
+            </div>
+        </div>
     }
 </div>
 
@@ -245,7 +294,7 @@
     private ClassroomDetailsDto? details;
     private bool isLoading = true;
     private string? error;
-
+    private bool isChatOpen = false; // Стан для відкриття/закриття чату
     // 🔹 посилання на дочірні компоненти-таби
     private ClassroomMaterialsTab? materialsTab;
     private ClassroomAssignmentsTab? assignmentsTab;
@@ -367,4 +416,25 @@
             await assignmentsTab.ReloadAsync();
         }
     }
+
+    private async Task OpenDeleteClassDialog()
+    {
+        var result = await DialogService.OpenAsync<ConfirmDeleteDialog>(
+            "Видалення класу",
+            new Dictionary<string, object>
+            {
+                { "Title", "Видалити цей клас?" },
+                { "Message", "Це видалить усі матеріали, завдання, оцінки та чат. Дія незворотна." },
+                { "EntityName", details!.Title }
+            },
+            new DialogOptions() { Width = "450px", CssClass = "custom-dialog" });
+
+        if (result is true)
+        {
+            // TODO: Реалізувати ClassroomService.DeleteAsync
+            Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "TODO", Detail = "Видалення класу успішно підтверджено." });
+            Nav.NavigateTo($"/classrooms");
+        }
+    }
+}
 }

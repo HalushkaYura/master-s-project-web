@@ -1,0 +1,375 @@
+﻿@page "/classrooms/{ClassroomId:guid}/my-grades"
+@layout MainLayout
+
+@using SmartClass.Application.Abstractions
+@using SmartClass.Application.Contracts.Gradebook
+@using SmartClass.Domain.Enums
+@using SmartClass.Web.Services
+@using Radzen
+
+@inject IGradebookService GradebookService
+@inject CurrentUserState CurrentUser
+@inject NavigationManager Nav
+@inject Radzen.NotificationService Toast
+
+<PageTitle>@(classroomTitle is null ? "Мої оцінки" : $"Мої оцінки – {classroomTitle}")</PageTitle>
+
+<div class="animate-fade-in">
+    @if (isLoading)
+    {
+        <div style="display:flex;justify-content:center;align-items:center;height:300px;">
+            <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate"
+                                       Size="ProgressBarCircularSize.Medium"
+                                       Style="color: var(--primary-color);" />
+        </div>
+    }
+    else if (!IsAuthenticated)
+    {
+        <RadzenAlert Severity="AlertSeverity.Warning" Variant="Variant.Flat">
+            Щоб переглядати оцінки, потрібно увійти до системи.
+        </RadzenAlert>
+    }
+    else if (!IsStudent)
+    {
+        <RadzenAlert Severity="AlertSeverity.Warning" Variant="Variant.Flat">
+            Сторінка "Мої оцінки" доступна тільки студентам.
+        </RadzenAlert>
+    }
+    else if (error != null)
+    {
+        <RadzenAlert Severity="AlertSeverity.Error" Variant="Variant.Flat">
+            @error
+        </RadzenAlert>
+    }
+    else if (items.Count == 0)
+    {
+        <RadzenAlert Severity="AlertSeverity.Info" Variant="Variant.Flat">
+            Для цього класу ще немає жодного завдання або оцінки.
+        </RadzenAlert>
+    }
+    else
+    {
+        <!-- HEADER -->
+        <div class="d-flex justify-content-between align-items-start flex-wrap"
+             style="border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 15px; margin-bottom: 25px;">
+            <div style="flex: 1; min-width: 260px;">
+                <h1 style="margin:0; color:var(--primary-color); font-weight:800; font-size:1.8rem;">
+                    Мої оцінки
+                </h1>
+                @if (!string.IsNullOrWhiteSpace(classroomTitle))
+                {
+                    <p style="margin-top:6px; color:var(--text-secondary);">
+                        Курс: <b>@classroomTitle</b>
+                    </p>
+                }
+
+                <p style="margin-top:6px; font-size:0.9rem; color:var(--text-muted);">
+                    Загальний бал: <b>@totalScore</b> /
+                    <b>@totalMax</b>
+                    @if (totalMax > 0)
+                    {
+                        <span>(@Math.Round(totalScore / (decimal)totalMax * 100m, 1)% від максимуму)</span>
+                    }
+                </p>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2">
+                <RadzenButton Text="⬅ Повернутися до класу"
+                              ButtonStyle="ButtonStyle.Secondary"
+                              Variant="Variant.Outlined"
+                              Icon="arrow_back"
+                              Click="@GoBackToClassroom" />
+
+                <RadzenButton Text="Оновити"
+                              Icon="refresh"
+                              ButtonStyle="ButtonStyle.Light"
+                              Variant="Variant.Flat"
+                              Click="@Reload" />
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="content-box">
+            <RadzenText Text="Список завдань та оцінок"
+                        TextStyle="TextStyle.H5"
+                        TagName="TagName.H4"
+                        Style="color: var(--text-main); font-weight: 700; margin-bottom: 15px;" />
+
+            <RadzenDataGrid Data="@items"
+                            TItem="MyGradeItem"
+                            Class="glass-grid"
+                            AllowSorting="true"
+                            AllowFiltering="false"
+                            AllowPaging="true"
+                            PageSize="10">
+                <Columns>
+                    <RadzenDataGridColumn TItem="MyGradeItem"
+                                          Property="Title"
+                                          Title="Завдання"
+                                          Width="35%">
+                        <Template Context="g">
+                            <div style="display:flex;flex-direction:column;gap:3px;">
+                                <span style="font-weight:600;color:var(--text-main);">
+                                    @g.Title
+                                </span>
+                                <span style="font-size:0.8rem;color:var(--text-muted);">
+                                    Макс. бал: @g.MaxPoints
+                                    @if (g.DueAt != null)
+                                    {
+                                        <span> · Дедлайн: @g.DueAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                                    }
+                                </span>
+                            </div>
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="MyGradeItem"
+                                          Title="Статус"
+                                          Width="140px">
+                        <Template Context="g">
+                            @{
+                                var statusText = g.SubmissionStatus.ToString();
+                                var badgeStyle = BadgeStyle.Light;
+
+                                switch (g.SubmissionStatus)
+                                {
+                                    case SubmissionStatus.NotSubmitted:
+                                        badgeStyle = BadgeStyle.Warning;
+                                        break;
+                                    case SubmissionStatus.Submitted:
+                                        badgeStyle = BadgeStyle.Info;
+                                        break;
+                                    case SubmissionStatus.Graded:
+                                        badgeStyle = BadgeStyle.Success;
+                                        break;
+                                    case SubmissionStatus.ReturnedForRevision:
+                                        badgeStyle = BadgeStyle.Warning;
+                                        break;
+                                }
+                            }
+                            <RadzenBadge Text="@statusText"
+                                         BadgeStyle="@badgeStyle"
+                                         IsPill="true" />
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="MyGradeItem"
+                                          Title="Оцінка"
+                                          Width="160px">
+                        <Template Context="g">
+                            @if (g.Score is null)
+                            {
+                                <span style="color:var(--text-muted); font-size:0.9rem;">—</span>
+                            }
+                            else
+                            {
+                                var percent = g.MaxPoints > 0
+                                ? Math.Round((decimal)g.Score.Value / g.MaxPoints * 100m, 1)
+                                : 0m;
+
+                                var color = "var(--text-main)";
+                                if (percent >= 90) color = "#16a34a";       // зелений
+                                else if (percent < 60) color = "#dc2626";  // червоний
+
+                                <span style="font-weight:600;color:@color;">
+                                    @g.Score / @g.MaxPoints
+                                    <span style="font-size:0.8rem;color:var(--text-muted);">
+                                        (@percent %)
+                                    </span>
+                                </span>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(g.Comment))
+                            {
+                                <RadzenIcon Icon="chat"
+                                            Style="font-size:1rem;margin-left:6px;color:var(--accent-color);"
+                                            Title="@g.Comment" />
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="MyGradeItem"
+                                          Title="Здано"
+                                          Width="150px">
+                        <Template Context="g">
+                            @if (g.SubmittedAt != null)
+                            {
+                                <span style="font-size:0.85rem;color:var(--text-secondary);">
+                                    @g.SubmittedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                </span>
+                            }
+                            else
+                            {
+                                <span style="font-size:0.85rem;color:var(--text-muted);">
+                                    Не здано
+                                </span>
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="MyGradeItem"
+                                          Title=""
+                                          Width="110px">
+                        <Template Context="g">
+                            <RadzenButton Icon="open_in_new"
+                                          Size="ButtonSize.Small"
+                                          ButtonStyle="ButtonStyle.Primary"
+                                          Variant="Variant.Text"
+                                          Click="@(() => OpenAssignment(g.AssignmentId))"
+                                          Title="Відкрити завдання" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        </div>
+    }
+</div>
+
+<style>
+    .content-box {
+        background: rgba(255, 255, 255, 0.7);
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+</style>
+
+@code {
+    [Parameter] public Guid ClassroomId { get; set; }
+
+    private bool isLoading = true;
+    private string? error;
+    private string? classroomTitle;
+
+    private List<MyGradeItem> items = new();
+
+    private decimal totalScore;
+    private int totalMax;
+
+    private bool IsAuthenticated => CurrentUser.User != null;
+
+    private bool IsStudent =>
+        CurrentUser.User?.Roles?.Any(r =>
+            string.Equals(r, "student", StringComparison.OrdinalIgnoreCase) ||
+            r.Contains("студент", StringComparison.OrdinalIgnoreCase)
+        ) == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        error = null;
+        items.Clear();
+        totalScore = 0;
+        totalMax = 0;
+
+        try
+        {
+            if (!IsAuthenticated)
+                return;
+
+            if (!IsStudent)
+            {
+                error = "Сторінка 'Мої оцінки' доступна лише студентам.";
+                return;
+            }
+
+            if (!Guid.TryParse(CurrentUser.User!.UserId, out var studentId))
+            {
+                error = "Некоректний ідентифікатор користувача.";
+                return;
+            }
+
+            // Отримуємо журнал по всьому класу
+            var gradebook = await GradebookService
+                .GetForClassroomAsync(ClassroomId, CancellationToken.None);
+
+            classroomTitle = gradebook.ClassroomTitle;
+
+            var row = gradebook.Rows.FirstOrDefault(r => r.StudentId == studentId);
+            if (row is null)
+            {
+                error = "Ви не значитеся студентом у цьому класі, або поки що немає записів у журналі.";
+                return;
+            }
+
+            // Зведення: для кожного завдання беремо відповідну клітинку
+            foreach (var a in gradebook.Assignments)
+            {
+                var cell = row.Cells.FirstOrDefault(c => c.AssignmentId == a.AssignmentId);
+
+                if (cell is null)
+                {
+                    items.Add(new MyGradeItem
+                    {
+                        AssignmentId = a.AssignmentId,
+                        Title = a.Title,
+                        MaxPoints = a.MaxPoints,
+                        DueAt = a.DueAt,
+                        AssignmentStatus = a.Status,
+                        SubmissionStatus = SubmissionStatus.NotSubmitted,
+                        Score = null,
+                        SubmittedAt = null,
+                        Comment = null
+                    });
+                }
+                else
+                {
+                    items.Add(new MyGradeItem
+                    {
+                        AssignmentId = a.AssignmentId,
+                        Title = a.Title,
+                        MaxPoints = a.MaxPoints,
+                        DueAt = a.DueAt,
+                        AssignmentStatus = a.Status,
+                        SubmissionStatus = cell.Status,
+                        Score = cell.Score,
+                        SubmittedAt = cell.SubmittedAt,
+                        Comment = cell.Comment
+                    });
+
+                    if (cell.Score.HasValue)
+                    {
+                        totalScore += cell.Score.Value;
+                        totalMax += a.MaxPoints;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private Task Reload() => LoadData();
+
+    private void GoBackToClassroom()
+        => Nav.NavigateTo($"/classrooms/{ClassroomId}");
+
+    private void OpenAssignment(Guid assignmentId)
+        => Nav.NavigateTo($"/classrooms/{ClassroomId}/assignments/{assignmentId}");
+
+    private sealed class MyGradeItem
+    {
+        public Guid AssignmentId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public int MaxPoints { get; set; }
+        public DateTime? DueAt { get; set; }
+        public string AssignmentStatus { get; set; } = string.Empty;
+
+        public SubmissionStatus SubmissionStatus { get; set; } = SubmissionStatus.NotSubmitted;
+        public decimal? Score { get; set; }
+        public DateTime? SubmittedAt { get; set; }
+        public string? Comment { get; set; }
+    }
+}

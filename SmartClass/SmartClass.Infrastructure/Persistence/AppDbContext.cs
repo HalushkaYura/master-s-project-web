@@ -267,17 +267,15 @@ namespace SmartClass.Infrastructure.Persistence
                 b.HasKey(x => x.Id);
 
                 b.Property(x => x.Title)
-                 .IsRequired()
-                 .HasMaxLength(200);
-
-                b.Property(x => x.Type)
-                 .HasConversion<int>()
-                 .IsRequired();
+                    .HasMaxLength(200)
+                    .IsRequired();
 
                 b.HasOne(x => x.Classroom)
-                 .WithMany(c => c.Channels)
-                 .HasForeignKey(x => x.ClassroomId)
-                 .OnDelete(DeleteBehavior.Cascade);
+                    .WithMany(c => c.Channels)
+                    .HasForeignKey(x => x.ClassroomId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasIndex(x => new { x.ClassroomId, x.Type });
             });
 
             // =========================
