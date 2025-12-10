@@ -8,7 +8,8 @@ namespace SmartClass.Application.Contracts.Submissions
         string StudentName,
         SubmissionStatus Status,
         DateTime? SubmittedAt,
-        decimal? Score
-    );
+        decimal? Score,
+        string? TeacherComment
+);
 }
 

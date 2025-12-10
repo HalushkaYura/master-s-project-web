@@ -52,7 +52,6 @@
     }
     else if (details != null)
     {
-        <!-- HEADER SECTION -->
         <div class="classroom-header">
             <RadzenStack Orientation="Orientation.Horizontal"
                          JustifyContent="JustifyContent.SpaceBetween"
@@ -60,7 +59,6 @@
                          Wrap="FlexWrap.Wrap"
                          Gap="20px">
 
-                <!-- Title & Meta -->
                 <div style="flex: 1; min-width: 300px;">
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="10px">
                         <div class="class-icon-wrapper">
@@ -90,32 +88,32 @@
                         </p>
                     }
                 </div>
-                <div>
+
+                <div style="display: flex; flex-direction: column; gap: 15px; align-items: flex-end;">
                     @if (!IsTeacher)
                     {
                         <RadzenButton Text="Мої оцінки"
                                       Icon="grading"
-                                      ButtonStyle="ButtonStyle.Secondary"
-                                      Style="color: whitesmoke"
-                                      Variant="Variant.Outlined"
+                                      ButtonStyle="ButtonStyle.Primary"
+                                      Variant="Variant.Flat"
+                                      class="btn-primary-custom"
                                       Click="@(() => Nav.NavigateTo($"/classrooms/{ClassroomId}/my-grades"))" />
                     }
-                </div>
-                <!-- Invite Code Box -->
-                <div class="invite-card">
-                    <span class="invite-label">Код приєднання</span>
-                    <div class="code-display"
-                         @onclick="CopyInviteLink"
-                         title="Натисніть, щоб скопіювати посилання">
-                        <span class="code-text">@details.JoinCode</span>
-                        <RadzenIcon Icon="content_copy"
-                                    Style="font-size: 1.2rem; color: var(--primary-color);" />
+
+                    <div class="invite-card">
+                        <span class="invite-label">Код приєднання</span>
+                        <div class="code-display"
+                             @onclick="CopyInviteLink"
+                             title="Натисніть, щоб скопіювати посилання">
+                            <span class="code-text">@details.JoinCode</span>
+                            <RadzenIcon Icon="content_copy"
+                                        Style="font-size: 1.2rem; color: var(--primary-color);" />
+                        </div>
                     </div>
                 </div>
             </RadzenStack>
         </div>
 
-        <!-- TEACHER TOOLBAR -->
         @if (IsTeacher)
         {
             <div class="teacher-toolbar">
@@ -126,15 +124,15 @@
                 <RadzenStack Orientation="Orientation.Horizontal" Gap="10px" Wrap="FlexWrap.Wrap">
                     <RadzenButton Text="Нове завдання"
                                   Icon="add_task"
-                                  ButtonStyle="ButtonStyle.Success"
-                                  Style="lighting-color"
+                                  ButtonStyle="ButtonStyle.Primary"
+                                  class="btn-primary-custom"
                                   Click="@OpenCreateAssignmentDialog" />
 
                     <RadzenButton Text="Додати матеріал"
                                   Icon="library_add"
-                                  ButtonStyle="ButtonStyle.Success"
+                                  ButtonStyle="ButtonStyle.Secondary"
                                   Variant="Variant.Outlined"
-                                  Style="border-radius: 10px; color: var(--text-light); border-color: #cbd5e1; font-weight: 600;"
+                                  Style="border-radius: 10px; font-weight: 600;"
                                   Click="@OpenCreateMaterialDialog" />
 
                     <div style="flex: 1;"></div>
@@ -142,21 +140,22 @@
                     <RadzenButton Text="Редагувати клас"
                                   Icon="edit"
                                   ButtonStyle="ButtonStyle.Warning"
-                                  Variant="Variant.Flat"
-                                  Style="color: var(--text-secondary);" />
+                                  Variant="Variant.Text"
+                                  Style="color: var(--text-secondary); font-weight: 600;" />
+
                     <RadzenButton Text="Видалити клас"
                                   Icon="delete"
                                   Variant="Variant.Text"
                                   ButtonStyle="ButtonStyle.Danger"
-                                  Style="color: #ef4444;"
+                                  Style="color: #ef4444; font-weight: 600;"
                                   Click="OpenDeleteClassDialog" />
                 </RadzenStack>
             </div>
         }
 
-        <!-- TABS CONTENT -->
         <RadzenTabs RenderMode="TabRenderMode.Client"
-                    Style="background: transparent; box-shadow: none; border: none; margin-top: 20px;">
+                    Class="glass-tabs">
+            @* Використовуємо кастомний клас для прибирання рамок *@
             <Tabs>
                 <RadzenTabsItem Text="Огляд" Icon="dashboard">
                     <div class="tab-content-wrapper">
@@ -230,7 +229,6 @@
                     </div>
                 </RadzenTabsItem>
 
-                <!-- МАТЕРІАЛИ -->
                 <RadzenTabsItem Text="Матеріали" Icon="library_books">
                     <div class="tab-content-wrapper">
                         <ClassroomMaterialsTab @ref="materialsTab"
@@ -239,7 +237,6 @@
                     </div>
                 </RadzenTabsItem>
 
-                <!-- ЗАВДАННЯ -->
                 <RadzenTabsItem Text="Завдання" Icon="assignment">
                     <div class="tab-content-wrapper">
                         <ClassroomAssignmentsTab @ref="assignmentsTab"
@@ -248,14 +245,12 @@
                     </div>
                 </RadzenTabsItem>
 
-                <!-- Журнал -->
                 @if (IsTeacher)
                 {
                     <RadzenTabsItem Text="Журнал оцінок" Icon="table_chart">
                         <RadzenButton Text="Відкрити журнал"
                                       Icon="open_in_new"
-                                      Style="color: whitesmoke"
-                                      ButtonStyle="ButtonStyle.Primary"
+                                      class="btn-primary-custom"
                                       Click="@(() => Nav.NavigateTo($"/classrooms/{ClassroomId}/gradebook"))" />
                     </RadzenTabsItem>
                 }
@@ -263,30 +258,7 @@
         </RadzenTabs>
     }
 </div>
-<!-- FLOATING CHAT WIDGET -->
-<div class="floating-chat-container">
-    @if (IsAuthenticated)
-    {
-        <!-- КНОПКА: Відкриває панель чату -->
-        <RadzenButton Icon="forum" 
-                      Class="floating-chat-button"
-                      Click="@(() => isChatOpen = !isChatOpen)"
-                      Style="background-color: var(--accent-color) !important; box-shadow: 0 4px 10px rgba(66, 165, 245, 0.4);" />
 
-        <!-- ПАНЕЛЬ ЧАТУ -->
-        <div class="chat-sidebar-panel @(isChatOpen ? "open" : "")">
-            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center" Style="padding: 10px; border-bottom: 1px solid rgba(0,0,0,0.1);">
-                <span style="font-weight: 700; color: var(--primary-color);">Чат класу</span>
-                <RadzenButton Icon="close" Variant="Variant.Text" ButtonStyle="ButtonStyle.Secondary" Click="@(() => isChatOpen = false)" />
-            </RadzenStack>
-            
-            <div style="flex: 1; overflow: hidden; padding: 10px;">
-                <!-- ВСТАВЛЯЄМО КОМПОНЕНТ ЧАТУ СЮДИ -->
-                <ClassroomChatPanel ClassroomId="ClassroomId" /> 
-            </div>
-        </div>
-    }
-</div>
 
 @code {
     [Parameter] public Guid ClassroomId { get; set; }
@@ -327,6 +299,8 @@
                 return;
             }
 
+            // ⚠️ Тут потрібно забезпечити, що ClassroomService.GetClassroomDetailsAsync
+            // використовує HttpClient з Bearer токеном, інакше отримаєте 401.
             details = await ClassroomService
                 .GetClassroomDetailsAsync(ClassroomId, userId, CancellationToken.None);
 
@@ -391,7 +365,6 @@
                 Draggable = true
             });
 
-        // 🔹 якщо матеріал успішно створено – оновлюємо таб "Матеріали"
         if (result is bool ok && ok && materialsTab is not null)
         {
             await materialsTab.ReloadAsync();
@@ -410,7 +383,6 @@
                 Draggable = true
             });
 
-        // 🔹 якщо завдання успішно створено – оновлюємо таб "Завдання"
         if (result is bool ok && ok && assignmentsTab is not null)
         {
             await assignmentsTab.ReloadAsync();
@@ -425,7 +397,7 @@
             {
                 { "Title", "Видалити цей клас?" },
                 { "Message", "Це видалить усі матеріали, завдання, оцінки та чат. Дія незворотна." },
-                { "EntityName", details!.Title }
+                { "Description", $"Видалення класу '{details!.Title}' неможливо скасувати." }
             },
             new DialogOptions() { Width = "450px", CssClass = "custom-dialog" });
 
@@ -437,4 +409,28 @@
         }
     }
 }
-}
+
+
+@* Цей блок розташовано поза основним контентом (div.animate-fade-in),
+   щоб position: fixed працював відносно вікна браузера, а не прокручуваного контейнера.
+   Він знаходиться тут, оскільки йому потрібен ClassroomId. *@
+<div class="floating-chat-container">
+    @if (IsAuthenticated)
+    {
+        <RadzenButton Icon="forum"
+                      Class="floating-chat-button"
+                      Click="@(() => isChatOpen = !isChatOpen)"
+                      Style="background-color: var(--accent-color) !important; box-shadow: 0 4px 10px rgba(66, 165, 245, 0.4);" />
+
+        <div class="chat-sidebar-panel @(isChatOpen ? "open" : "")">
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center" Style="padding: 10px; border-bottom: 1px solid rgba(0,0,0,0.1);">
+                <span style="font-weight: 700; color: var(--primary-color);">Чат класу</span>
+                <RadzenButton Icon="close" Variant="Variant.Text" ButtonStyle="ButtonStyle.Secondary" Click="@(() => isChatOpen = false)" />
+            </RadzenStack>
+
+            <div style="flex: 1; overflow: hidden; padding: 10px;">
+                <ClassroomChatPanel ClassroomId="ClassroomId" />
+            </div>
+        </div>
+    }
+</div>

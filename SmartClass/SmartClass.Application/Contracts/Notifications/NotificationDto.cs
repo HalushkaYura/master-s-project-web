@@ -1,10 +1,15 @@
-﻿namespace SmartClass.Application.Contracts.Notifications;
-
-public sealed class NotificationDto
+﻿namespace SmartClass.Application.Contracts.Notifications
 {
-    public Guid Id { get; set; }
-    public string Type { get; set; } = string.Empty;
-    public string PayloadJson { get; set; } = "{}";
-    public bool IsRead { get; set; }
-    public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// Те, що віддаємо на фронт.
+    /// </summary>
+    public sealed record NotificationDto(
+        Guid Id,
+        string Type,
+        string PayloadJson,
+        bool IsRead,
+        DateTime CreatedAt  
+    );
+
 }

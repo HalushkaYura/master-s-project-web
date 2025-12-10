@@ -1,11 +1,12 @@
-﻿// SmartClass.Infrastructure.Services/SubmissionService.cs
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SmartClass.Application.Abstractions;
 using SmartClass.Application.Contracts;
+using SmartClass.Application.Contracts.Notifications;
 using SmartClass.Application.Contracts.Submissions;
 using SmartClass.Domain.Entities;
 using SmartClass.Domain.Enums;
 using SmartClass.Infrastructure.Persistence;
+using System.Text.Json;
 
 namespace SmartClass.Infrastructure.Services
 {
@@ -17,6 +18,7 @@ namespace SmartClass.Infrastructure.Services
         private readonly IRepository<Grade> _grades;
         private readonly IDbContextFactory<AppDbContext> _dbFactory;
         private readonly IUserService _userService;
+        private readonly INotificationService _notifications;
 
         public SubmissionService(
             IRepository<Submission> submissions,
@@ -24,7 +26,8 @@ namespace SmartClass.Infrastructure.Services
             IRepository<FileResource> files,
             IRepository<Grade> grades,
             IDbContextFactory<AppDbContext> dbFactory,
-            IUserService userService)
+            IUserService userService,
+            INotificationService notifications)
         {
             _submissions = submissions;
             _assignments = assignments;
@@ -32,6 +35,7 @@ namespace SmartClass.Infrastructure.Services
             _grades = grades;
             _dbFactory = dbFactory;
             _userService = userService;
+            _notifications = notifications;
         }
 
         public async Task<SubmissionDetailsDto> EnsureForStudentAsync(
@@ -63,7 +67,6 @@ namespace SmartClass.Infrastructure.Services
                 await _submissions.SaveChangesAsync();
             }
 
-            // Підтягуємо ім'я студента
             var studentName = await GetStudentNameSafeAsync(studentId.ToString());
 
             var files = existing.Files
@@ -138,7 +141,6 @@ namespace SmartClass.Infrastructure.Services
                 .Where(s => s.AssignmentId == assignmentId)
                 .ToListAsync(ct);
 
-            // Унікальні студенти по завданню
             var studentIds = list
                 .Select(s => s.StudentId)
                 .Distinct()
@@ -152,15 +154,18 @@ namespace SmartClass.Infrastructure.Services
                 names[sid] = name;
             }
 
-            var result = list.Select(s =>
-                new SubmissionListItemDto(
-                    Id: s.Id,
-                    StudentId: s.StudentId,
-                    StudentName: names.TryGetValue(s.StudentId, out var n) ? n : string.Empty,
-                    Status: s.Status,
-                    SubmittedAt: s.SubmittedAt,
-                    Score: s.Grade?.Score
-                )).ToList();
+            var result = list
+                .Select(s =>
+                    new SubmissionListItemDto(
+                            Id: s.Id,
+                            StudentId: s.StudentId,
+                            StudentName: names.TryGetValue(s.StudentId, out var n) ? n : string.Empty,
+                            Status: s.Status,
+                            SubmittedAt: s.SubmittedAt,
+                            Score: s.Grade?.Score,
+                            TeacherComment: s.Grade?.Comment
+                    ))
+                .ToList();
 
             return result;
         }
@@ -204,36 +209,64 @@ namespace SmartClass.Infrastructure.Services
 
             await _submissions.UpdateAsync(s);
             await _submissions.SaveChangesAsync();
+
+            // 🔔 Нотифікація студенту про оновлену/виставлену оцінку
+            await _notifications.CreateAsync(
+                new CreateNotificationDto(
+                    UserId: s.StudentId,
+                    Type: "GradeUpdated",
+                    PayloadJson: JsonSerializer.Serialize(new
+                    {
+                        SubmissionId = s.Id,
+                        AssignmentId = s.AssignmentId,
+                        Score = dto.Score,
+                        Comment = dto.Comment
+                    })),
+                ct);
         }
 
         public async Task SubmitAsync(Guid submissionId, CancellationToken ct = default)
         {
-            // Використаємо репозиторій, як і в інших методах
-            var s = await _submissions.GetByKeyAsync(submissionId);
+            await using var db = await _dbFactory.CreateDbContextAsync(ct);
+
+            var s = await db.Submissions
+                .Include(x => x.Assignment)
+                .FirstOrDefaultAsync(x => x.Id == submissionId, ct);
+
             if (s is null)
                 throw new InvalidOperationException("Submission not found");
 
             s.SubmittedAt = DateTime.UtcNow;
 
-            // Якщо ще не оцінено – ставимо Submitted
             if (s.Status != SubmissionStatus.Graded)
             {
                 s.Status = SubmissionStatus.Submitted;
             }
 
-            await _submissions.UpdateAsync(s);
-            await _submissions.SaveChangesAsync();
+            await db.SaveChangesAsync(ct);
+
+            // 🔔 Нотифікація викладачу, що студент здав роботу
+            if (s.Assignment != null)
+            {
+                await _notifications.CreateAsync(
+                    new CreateNotificationDto(
+                        UserId: s.Assignment.CreatedBy,
+                        Type: "SubmissionSubmitted",
+                        PayloadJson: JsonSerializer.Serialize(new
+                        {
+                            SubmissionId = s.Id,
+                            AssignmentId = s.AssignmentId,
+                            StudentId = s.StudentId
+                        })),
+                    ct);
+            }
         }
 
-        /// <summary>
-        /// Безпечне отримання ПІБ студента. Якщо не знайдено – повертає пустий рядок.
-        /// </summary>
         private async Task<string> GetStudentNameSafeAsync(string userId)
         {
             try
             {
                 var info = await _userService.UserInfoAsync(userId);
-                // Можеш поміняти формат як хочеш
                 var fullName = $"{info.Lastname} {info.Firstname}".Trim();
                 return string.IsNullOrWhiteSpace(fullName) ? info.Email : fullName;
             }

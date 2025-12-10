@@ -127,24 +127,26 @@
 
     /* --- КНОПКА ВІДПРАВКИ (ОНОВЛЕНО) --- */
     /* --- КНОПКА ВІДПРАВКИ (ФІНАЛЬНЕ ВИПРАВЛЕННЯ) --- */
-    .send-button-custom.rz-button {
-        /* Націлюємося на .rz-button для більшої специфічності */
-        /* ФОН та РАМКА */
-        background: linear-gradient(135deg, #002171, #3e50b4) !important; /* Синій градієнт */
-        border: none !important; /* Прибираємо будь-яку рамку */
-        /* ТЕКСТ та ІКОНКА */
-        color: white !important; /* Колір іконки */
-        /* Розміри та тінь */
-        border-radius: 10px !important; /* Округлення */
-        box-shadow: 0 4px 10px rgba(0, 33, 113, 0.3) !important;
-        font-size: 1.2rem;
-        padding: 0 !important; /* Гарантуємо, що padding не впливає на фон */
+    .send-button-native {
+        /* Використовуємо фіксовані HEX-значення з вашої палітри:
+           --primary-color: #002171; --primary-light: #3e50b4; */
+        background: linear-gradient(135deg, #002171, #3e50b4); /* Синій градієнт */
+        color: white;
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0, 33, 113, 0.3);
+        /* ... інші стилі ... */
     }
 
-        /* Наведення */
-        .send-button-custom.rz-button:hover {
-            background: linear-gradient(135deg, #0033a0, #4a68c0) !important;
-            transform: translateY(-1px);
+        .send-button-native:hover:not(:disabled) {
+            background: linear-gradient(135deg, #0033a0, #4a68c0);
+            /* ... інші стилі ... */
+        }
+
+        .send-button-native:disabled {
+            background: #d1d5db; /* Світло-сірий */
+            color: #9ca3af;
+            /* ... інші стилі ... */
         }
 
 </style>

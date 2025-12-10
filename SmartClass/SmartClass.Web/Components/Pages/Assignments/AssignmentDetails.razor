@@ -7,8 +7,10 @@
 @using SmartClass.Application.Contracts
 @using SmartClass.Application.Contracts.Submissions
 @using SmartClass.Domain.Enums
+@using SmartClass.Web.Components.Shared
 @using SmartClass.Web.Services
 @using Radzen
+@using Radzen.Blazor
 
 @inject IAssignmentService AssignmentService
 @inject ISubmissionService SubmissionService
@@ -18,16 +20,15 @@
 @inject Radzen.NotificationService Toast
 @inject Radzen.DialogService DialogService
 @inject IJSRuntime JS
+@inject ILocalizationService L
 
-<PageTitle>@(assignment is null ? "Завдання" : assignment.Title)</PageTitle>
+<PageTitle>@(assignment is null ? L.Get("Assignment") : assignment.Title)</PageTitle>
 
 <div class="animate-fade-in">
     @if (isLoading)
     {
         <div style="display:flex;justify-content:center;align-items:center;height:300px;">
-            <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate"
-                                       Size="ProgressBarCircularSize.Medium"
-                                       Style="color: var(--primary-color);" />
+            <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" Style="color: var(--primary-color);" />
         </div>
     }
     else if (!IsAuthenticated)
@@ -45,8 +46,7 @@
     else if (assignment != null)
     {
         <!-- HEADER SECTION -->
-        <div class="d-flex justify-content-between align-items-start flex-wrap"
-             style="border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 15px; margin-bottom: 25px;">
+        <div class="d-flex justify-content-between align-items-start flex-wrap" style="border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 15px; margin-bottom: 25px;">
             <div style="flex: 1; min-width: 300px;">
                 <h1 style="color: var(--primary-color); font-weight: 800; font-size: 2rem; margin: 0;">
                     @assignment.Title
@@ -57,31 +57,27 @@
                     <div class="meta-info-item">
                         <RadzenIcon Icon="calendar_today" Style="font-size: 1rem; color: var(--text-muted);" />
                         <span style="font-weight: 600; color: var(--primary-color);">
-                            @(assignment.DueAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "Без дедлайну")
+                            @(assignment.DueAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? L.Get("NoDeadline"))
                         </span>
-                        <span style="color: var(--text-muted); font-size: 0.9rem;">(Дедлайн)</span>
+                        <span style="color: var(--text-muted); font-size: 0.9rem;">(@L.Get("Deadline"))</span>
                     </div>
                     <div class="meta-info-item">
                         <RadzenIcon Icon="star" Style="font-size: 1rem; color: var(--text-muted);" />
                         <span style="font-weight: 600;">@assignment.PointsMax</span>
-                        <span style="color: var(--text-muted); font-size: 0.9rem;">(Балів)</span>
+                        <span style="color: var(--text-muted); font-size: 0.9rem;">(@L.Get("MaxPoints"))</span>
                     </div>
                     <div class="meta-info-item">
-                        <RadzenBadge Text="@assignment.Status"
-                                     BadgeStyle="@(assignment.Status == "Published"
-                                                                                        ? BadgeStyle.Success
-                                                                                        : assignment.Status == "Closed"
-                                                                                          ? BadgeStyle.Dark
-                                                                                          : BadgeStyle.Warning)"
-                                 IsPill="true" />
-                </div>
-            </RadzenStack>
+                        <RadzenBadge Text="@L.Get(assignment.Status)"
+                                     BadgeStyle="@GetAssignmentBadgeStyle(assignment.Status)"
+                                     IsPill="true" />
+                    </div>
+                </RadzenStack>
 
                 <!-- Посилання на тему -->
-            @if (!string.IsNullOrWhiteSpace(assignment.MaterialTitle) && assignment.MaterialId != null)
+                @if (!string.IsNullOrWhiteSpace(assignment.MaterialTitle) && assignment.MaterialId != null)
                 {
                     <p style="margin-top: 10px; color: var(--text-secondary);">
-                        Тема:
+                        @L.Get("Topic"):
                         <RadzenLink Text="@assignment.MaterialTitle"
                                     Click="@(() => OpenMaterial(assignment.MaterialId.Value))"
                                     Style="font-weight: 600; color: var(--accent-color);" />
@@ -93,13 +89,13 @@
             @if (IsTeacher)
             {
                 <RadzenStack Orientation="Orientation.Horizontal" Gap="10px" Class="rz-mt-3">
-                    <RadzenButton Text="Редагувати"
+                    <RadzenButton Text="@L.Get("Edit")"
                                   Icon="edit"
                                   ButtonStyle="ButtonStyle.Secondary"
                                   Variant="Variant.Outlined"
                                   Style="border-radius: 8px;" />
 
-                    <RadzenButton Text="Видалити"
+                    <RadzenButton Text="@L.Get("Delete")"
                                   Icon="delete"
                                   ButtonStyle="ButtonStyle.Danger"
                                   Variant="Variant.Text"
@@ -107,14 +103,14 @@
 
                     @if (assignment.Status == "Draft")
                     {
-                        <RadzenButton Text="Опублікувати"
+                        <RadzenButton Text="@L.Get("Publish")"
                                       Icon="cloud_upload"
                                       Class="btn-primary-custom"
                                       Click="@(() => ChangeStatus("Published"))" />
                     }
                     else if (assignment.Status == "Published")
                     {
-                        <RadzenButton Text="Закрити"
+                        <RadzenButton Text="@L.Get("Close")"
                                       Icon="lock"
                                       ButtonStyle="ButtonStyle.Warning"
                                       Class="btn-primary-custom"
@@ -131,7 +127,7 @@
             <RadzenColumn Size="12" SizeLG="8">
 
                 <div class="content-box">
-                    <RadzenText Text="Опис завдання"
+                    <RadzenText Text="@L.Get("AssignmentDescription")"
                                 TextStyle="TextStyle.H5"
                                 TagName="TagName.H4"
                                 Style="color: var(--text-main); font-weight: 700; margin-bottom: 15px;" />
@@ -144,12 +140,12 @@
                     }
                     else
                     {
-                        <p class="text-muted">Детальний опис відсутній.</p>
+                        <p class="text-muted">@L.Get("NoDescriptionProvided").</p>
                     }
                 </div>
 
                 <div class="content-box rz-mt-4">
-                    <RadzenText Text="Прикріплені файли (умова)"
+                    <RadzenText Text="@L.Get("AssignmentFiles")"
                                 TextStyle="TextStyle.H5"
                                 TagName="TagName.H4"
                                 Style="color: var(--text-main); font-weight: 700; margin-bottom: 15px;" />
@@ -160,24 +156,17 @@
                                         TItem="FileResourceDto"
                                         Class="glass-grid">
                             <Columns>
-                                <RadzenDataGridColumn TItem="FileResourceDto"
-                                                      Property="FileName"
-                                                      Title="Файл"
-                                                      Width="50%" />
-                                <RadzenDataGridColumn TItem="FileResourceDto"
-                                                      Title="Розмір"
-                                                      Width="20%">
+                                <RadzenDataGridColumn TItem="FileResourceDto" Property="FileName" Title="@L.Get("File")" Width="50%" />
+                                <RadzenDataGridColumn TItem="FileResourceDto" Title="@L.Get("Size")" Width="20%">
                                     <Template Context="f">@FormatSize(f.SizeBytes)</Template>
                                 </RadzenDataGridColumn>
-                                <RadzenDataGridColumn TItem="FileResourceDto"
-                                                      Title="Дія"
-                                                      Width="100px">
+                                <RadzenDataGridColumn TItem="FileResourceDto" Title="@L.Get("Action")" Width="100px">
                                     <Template Context="f">
-                                        <RadzenButton Icon="download"
-                                                      Size="ButtonSize.Small"
-                                                      ButtonStyle="ButtonStyle.Primary"
-                                                      Variant="Variant.Text"
-                                                      Click="@(async () => await DownloadFile(f.Id))" />
+                                        <RadzenButton Icon="download" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Text" Click="@(async () => await DownloadFile(f.Id))" />
+                                        @if (IsTeacher)
+                                        {
+                                            <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Text" Click="@(() => DeleteFile(f.Id))" />
+                                        }
                                     </Template>
                                 </RadzenDataGridColumn>
                             </Columns>
@@ -185,22 +174,16 @@
                     }
                     else
                     {
-                        <p class="text-muted">Немає прикріплених файлів.</p>
+                        <p class="text-muted">@L.Get("NoFilesAttached").</p>
                     }
 
                     @if (IsTeacher)
                     {
                         <div class="rz-mt-3">
-                            <RadzenUpload Url="@GetAssignmentUploadUrl()"
-                                          Multiple="true"
-                                          Auto="true"
-                                          ChooseText="Додати файл (викладач)"
-                                          Complete="@OnUploadCompleted"
-                                          Error="@OnUploadError">
+                            <RadzenUpload Url="@GetAssignmentUploadUrl()" Multiple="true" Auto="true" ChooseText="@L.Get("AddFileTeacher")" Complete="@OnUploadCompleted" Error="@OnUploadError">
                                 @if (!string.IsNullOrWhiteSpace(uploadToken))
                                 {
-                                    <RadzenUploadHeader Name="Authorization"
-                                                        Value="@($"Bearer {uploadToken}")" />
+                                    <RadzenUploadHeader Name="Authorization" Value="@($"Bearer {uploadToken}")" />
                                 }
                             </RadzenUpload>
                         </div>
@@ -215,7 +198,7 @@
                 {
                     <!-- TEACHER VIEW: Submissions List + grade panel -->
                     <div class="content-box sidebar-assignments-box">
-                        <RadzenText Text="Відповіді студентів"
+                        <RadzenText Text="@L.Get("StudentSubmissions")"
                                     TextStyle="TextStyle.H5"
                                     TagName="TagName.H4"
                                     Style="color: var(--text-main); font-weight: 700; margin-bottom: 15px;" />
@@ -224,10 +207,9 @@
                         {
                             <div class="text-center text-muted p-3"
                                  style="border: 1px dashed var(--text-muted); border-radius: 8px;">
-                                <RadzenIcon Icon="group"
-                                            Style="font-size: 1.5rem; margin-bottom: 8px;" />
+                                <RadzenIcon Icon="group" Style="font-size: 1.5rem; margin-bottom: 8px;" />
                                 <p style="font-size: 0.9rem; margin: 0;">
-                                    Поки немає жодної відповіді.
+                                    @L.Get("NoSubmissionsYet").
                                 </p>
                             </div>
                         }
@@ -235,35 +217,27 @@
                         {
                             <RadzenDataGrid Data="@submissions"
                                             TItem="SubmissionListItemDto"
-                                            Class="glass-grid"
-                                            RowClick="@OnSubmissionRowClick">
+                                            Class="glass-grid submission-list"
+                                            RowClick="@OnSubmissionRowClick"
+                                            AllowSorting="false">
                                 <Columns>
-                                    <RadzenDataGridColumn TItem="SubmissionListItemDto"
-                                                          Property="StudentName"
-                                                          Title="Студент" />
-                                    <RadzenDataGridColumn TItem="SubmissionListItemDto"
-                                                          Title="Статус">
+                                    <RadzenDataGridColumn TItem="SubmissionListItemDto" Property="StudentName" Title="@L.Get("Student")" Width="100%">
                                         <Template Context="s">
-                                            @s.Status.ToString()
+                                            <span class="rz-font-weight-bold">@s.StudentName</span>
                                         </Template>
                                     </RadzenDataGridColumn>
-                                    <RadzenDataGridColumn TItem="SubmissionListItemDto"
-                                                          Title="Надіслано">
+                                    <RadzenDataGridColumn TItem="SubmissionListItemDto" Title="@L.Get("Status")" Width="100px">
                                         <Template Context="s">
-                                            @if (s.SubmittedAt != null)
-                                            {
-                                                @s.SubmittedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
-                                            }
-                                            else
-                                            {
-                                                <span>-</span>
-                                            }
+                                            <RadzenBadge Text="@L.Get(s.Status.ToString())"
+                                                         BadgeStyle="@GetSubmissionBadgeStyle(s.Status)"
+                                                         IsPill="true" />
                                         </Template>
                                     </RadzenDataGridColumn>
-                                    <RadzenDataGridColumn TItem="SubmissionListItemDto"
-                                                          Title="Оцінка">
+                                    <RadzenDataGridColumn TItem="SubmissionListItemDto" Title="@L.Get("Grade")" Width="60px">
                                         <Template Context="s">
-                                            @s.Score
+                                            <span class="rz-font-weight-bold @(s.Score.HasValue ? "rz-color-success" : "rz-color-gray-500")">
+                                                @(s.Score.HasValue? s.Score.Value.ToString("F0") : "-")
+                                            </span>
                                         </Template>
                                     </RadzenDataGridColumn>
                                 </Columns>
@@ -271,33 +245,44 @@
 
                             @if (selectedSubmission != null)
                             {
-                                <div class="rz-mt-3"
-                                     style="border-top:1px solid rgba(148,163,184,0.4); padding-top:10px;">
-                                    <RadzenText Text="Оцінювання відповіді"
+                                <div class="grade-form-panel">
+
+                                    @* ВИПРАВЛЕНО: Використовуємо L.Get з аргументом *@
+                                    <RadzenText Text="@L.Get("GradingFor", selectedSubmission.StudentName)"
                                                 TextStyle="TextStyle.Subtitle2"
-                                                Style="font-weight:700; margin-bottom:8px;" />
-                                    <p style="font-size:0.9rem; margin-bottom:6px;">
-                                        Студент: <b>@selectedSubmission.StudentName</b>
-                                    </p>
+                                                Style="font-weight:700; margin-bottom:8px; color: var(--primary-color);" />
 
-                                    <RadzenLabel Text="Оцінка" />
-                                    <RadzenNumeric @bind-Value="gradeValue"
-                                                   Min="0"
-                                                   Max="@assignment.PointsMax"
-                                                   Style="width:100%; margin-bottom:6px;" />
+                                    <RadzenRow Gap="8px">
+                                        <RadzenColumn Size="12" SizeMD="6">
+                                            @* ВИПРАВЛЕНО: Використовуємо L.Get з аргументом *@
+                                            <RadzenLabel Text="@L.Get("ScoreMax", assignment.PointsMax.ToString())" />
+                                            <RadzenNumeric @bind-Value="gradeValue"
+                                                           Min="0"
+                                                           Max="@assignment.PointsMax"
+                                                           Style="width:100%; margin-bottom:6px;" />
+                                        </RadzenColumn>
+                                        <RadzenColumn Size="12" SizeMD="6">
+                                            <RadzenLabel Text="@L.Get("SubmittedAt")" />
+                                            <p style="font-size: 0.9rem; color: var(--text-secondary); margin: 0; padding-top: 5px;">
+                                                @(selectedSubmission.SubmittedAt?.ToLocalTime().ToString("g") ?? L.Get("No"))
+                                            </p>
+                                        </RadzenColumn>
+                                    </RadzenRow>
 
-                                    <RadzenLabel Text="Коментар викладача" />
+
+                                    <RadzenLabel Text="@L.Get("TeacherComment")" />
                                     <RadzenTextArea @bind-Value="gradeComment"
                                                     Rows="3"
-                                                    Style="width:100%; margin-bottom:8px;" />
+                                                    Placeholder="@L.Get("ProvideFeedback")"
+                                                    Style="width:100%; margin-bottom:12px;" />
 
-                                    <div style="display:flex; gap:8px; justify-content:flex-end;">
-                                        <RadzenButton Text="Скасувати"
+                                    <div class="d-flex justify-content-end">
+                                        <RadzenButton Text="@L.Get("Cancel")"
                                                       Icon="close"
                                                       ButtonStyle="ButtonStyle.Light"
                                                       Variant="Variant.Outlined"
                                                       Click="@ClearGradeForm" />
-                                        <RadzenButton Text="Зберегти оцінку"
+                                        <RadzenButton Text="@L.Get("SaveGrade")"
                                                       Icon="check"
                                                       Class="btn-primary-custom"
                                                       Click="@SaveGradeAsync" />
@@ -311,62 +296,61 @@
                 {
                     <!-- STUDENT VIEW: My Submission Panel -->
                     <div class="content-box sidebar-assignments-box">
-                        <RadzenText Text="Ваша робота"
+                        <RadzenText Text="@L.Get("YourWork")"
                                     TextStyle="TextStyle.H5"
                                     TagName="TagName.H4"
                                     Style="color: var(--text-main); font-weight: 700; margin-bottom: 15px;" />
 
                         @if (mySubmission is null)
                         {
-                            <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate"
-                                                       Size="ProgressBarCircularSize.Small" />
+                            <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
                         }
                         else
                         {
                             <div class="submission-panel">
-                                <p style="font-weight: 600; color: var(--accent-color);">
-                                    Статус: @mySubmission.Status.ToString()
-                                </p>
+                                <RadzenStack Orientation="Orientation.Vertical" Gap="8px">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="rz-font-weight-bold">@L.Get("Status"):</span>
+                                        <RadzenBadge Text="@L.Get(mySubmission.Status.ToString())"
+                                                     BadgeStyle="@GetSubmissionBadgeStyle(mySubmission.Status)"
+                                                     IsPill="true" />
+                                    </div>
 
-                                <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom:8px;">
-                                    @if (mySubmission.SubmittedAt != null)
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="rz-color-gray-600">@L.Get("Grade"):</span>
+                                        <span class="rz-font-weight-bold @(mySubmission.Score.HasValue ? "rz-color-success" : "rz-color-gray-500")">
+                                            @(mySubmission.Score.HasValue ? $"{mySubmission.Score.Value.ToString("F0")} / {assignment.PointsMax}" : L.Get("NotGraded"))
+                                        </span>
+                                    </div>
+
+                                    @if (!string.IsNullOrWhiteSpace(mySubmission.TeacherComment))
                                     {
-                                        <span>Відправлено: @mySubmission.SubmittedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
-                                    }
-                                    else
-                                    {
-                                        <span>Ви ще не здали роботу.</span>
+                                        <div class="teacher-comment-box">
+                                            <RadzenIcon Icon="chat_bubble" Class="rz-color-primary" />
+                                            <span style="font-size:0.9rem; color: var(--text-main);">
+                                                @L.Get("Comment"): @mySubmission.TeacherComment
+                                            </span>
+                                        </div>
                                     }
 
-                                    @if (mySubmission.Score != null)
-                                    {
-                                        <br />
-                                        <span>Оцінка: <b>@mySubmission.Score</b></span>
-                                        @if (!string.IsNullOrWhiteSpace(mySubmission.TeacherComment))
-                                        {
-                                            <br />
-                                            <span>Коментар: @mySubmission.TeacherComment</span>
-                                        }
-                                    }
-                                </p>
+                                </RadzenStack>
 
                                 <!-- Upload files -->
                                 <RadzenUpload Url="@GetSubmissionUploadUrl()"
                                               Multiple="true"
                                               Auto="true"
-                                              ChooseText="Прикріпити файли відповіді"
+                                              ChooseText="@L.Get("AttachReplaceFiles")"
                                               Complete="@OnSubmissionUploadCompleted"
                                               Error="@OnSubmissionUploadError"
-                                              Style="margin-bottom:10px;">
+                                              Style="margin-top:20px; margin-bottom:10px;">
                                     @if (!string.IsNullOrWhiteSpace(uploadToken))
                                     {
-                                        <RadzenUploadHeader Name="Authorization"
-                                                            Value="@($"Bearer {uploadToken}")" />
+                                        <RadzenUploadHeader Name="Authorization" Value="@($"Bearer {uploadToken}")" />
                                     }
                                 </RadzenUpload>
 
                                 <!-- Button 'Submit work' -->
-                                <RadzenButton Text="Здати роботу"
+                                <RadzenButton Text="@(mySubmission.Status == SubmissionStatus.Submitted ? L.Get("ResubmitWork") : L.Get("SubmitWork"))"
                                               Icon="send"
                                               Class="btn-primary-custom rz-mt-2"
                                               Disabled="@(!CanSubmitNow)"
@@ -374,37 +358,19 @@
 
                                 @if (mySubmission.Files != null && mySubmission.Files.Any())
                                 {
-                                    <RadzenDataGrid Data="@mySubmission.Files"
-                                                    TItem="FileResourceDto"
-                                                    Class="glass-grid rz-mt-3">
-                                        <Columns>
-                                            <RadzenDataGridColumn TItem="FileResourceDto"
-                                                                  Property="FileName"
-                                                                  Title="Файл" />
-                                            <RadzenDataGridColumn TItem="FileResourceDto"
-                                                                  Title="Розмір">
-                                                <Template Context="f">
-                                                    @FormatSize(f.SizeBytes)
-                                                </Template>
-                                            </RadzenDataGridColumn>
-                                            <RadzenDataGridColumn TItem="FileResourceDto"
-                                                                  Title="">
-                                                <Template Context="f">
-                                                    <RadzenButton Icon="download"
-                                                                  Size="ButtonSize.Small"
-                                                                  ButtonStyle="ButtonStyle.Primary"
-                                                                  Variant="Variant.Text"
-                                                                  Click="@(async () => await DownloadFile(f.Id))" />
-                                                </Template>
-                                            </RadzenDataGridColumn>
-                                        </Columns>
-                                    </RadzenDataGrid>
+                                    <RadzenText Text="@L.Get("AttachedFiles")" TextStyle="TextStyle.Subtitle2" Style="margin-top: 20px;" />
+                                    <RadzenDataList Data="@mySubmission.Files" TItem="FileResourceDto">
+                                        <Template Context="f">
+                                            <div class="d-flex justify-content-between align-items-center file-list-item">
+                                                <span class="rz-color-primary">@f.FileName</span>
+                                                <RadzenButton Icon="download" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" Click="@(async () => await DownloadFile(f.Id))" />
+                                            </div>
+                                        </Template>
+                                    </RadzenDataList>
                                 }
                                 else
                                 {
-                                    <p class="text-muted" style="font-size:0.85rem; margin-top:8px;">
-                                        Ви ще не додали жодного файлу до відповіді.
-                                    </p>
+                                    <p class="text-muted" style="font-size:0.85rem; margin-top:15px;">@L.Get("NoFilesAttachedStudent").</p>
                                 }
                             </div>
                         }
@@ -414,36 +380,6 @@
         </RadzenRow>
     }
 </div>
-
-<style>
-    .meta-info-item {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 5px 0;
-        font-size: 0.95rem;
-    }
-
-    .content-box {
-        background: rgba(255, 255, 255, 0.7);
-        padding: 24px;
-        border-radius: 16px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        border: 1px solid rgba(0,0,0,0.05);
-    }
-
-    .sidebar-assignments-box {
-        background: rgba(240, 245, 255, 0.9);
-        border: 1px solid var(--primary-light);
-    }
-
-    .rich-content-display {
-        border-radius: 12px;
-        padding: 12px 14px;
-        background: rgba(255,255,255,0.9);
-        border: 1px solid rgba(148,163,184,0.3);
-    }
-</style>
 
 @code {
     [Parameter] public Guid ClassroomId { get; set; }
@@ -456,7 +392,6 @@
     private SubmissionDetailsDto? mySubmission;
     private List<SubmissionListItemDto> submissions = new();
 
-    // Для оцінювання (викладач):
     private SubmissionListItemDto? selectedSubmission;
     private decimal? gradeValue;
     private string? gradeComment;
@@ -464,26 +399,18 @@
     private string? uploadToken;
 
     private bool IsAuthenticated => CurrentUser.User != null;
+    private bool IsTeacher => CurrentUser.User?.Roles?.Any(r => r.Contains("teacher", StringComparison.OrdinalIgnoreCase)) == true;
+    private bool IsStudent => CurrentUser.User?.Roles?.Any(r => r.Contains("student", StringComparison.OrdinalIgnoreCase)) == true;
+    private Guid CurrentUserId => Guid.Parse(CurrentUser.User?.UserId ?? Guid.Empty.ToString());
 
-    private bool IsTeacher =>
-        CurrentUser.User?.Roles?.Any(r =>
-            string.Equals(r, "teacher", StringComparison.OrdinalIgnoreCase) ||
-            r.Contains("викладач", StringComparison.OrdinalIgnoreCase)
-        ) == true;
-
-    private bool IsStudent =>
-        CurrentUser.User?.Roles?.Any(r =>
-            string.Equals(r, "student", StringComparison.OrdinalIgnoreCase) ||
-            r.Contains("студент", StringComparison.OrdinalIgnoreCase)
-        ) == true;
 
     private bool CanSubmitNow =>
         mySubmission != null
-        && (mySubmission.Status == SubmissionStatus.NotSubmitted
-            || mySubmission.Status == SubmissionStatus.ReturnedForRevision
-            || mySubmission.Status == SubmissionStatus.Submitted)
+        && assignment?.Status == "Published" // Тільки якщо завдання опубліковане
         && mySubmission.Files != null
-        && mySubmission.Files.Count > 0;
+        && mySubmission.Files.Any()
+        && (assignment.DueAt == null || mySubmission.Status != SubmissionStatus.Submitted || assignment.AllowLate);
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -491,12 +418,40 @@
 
         await LoadAssignment();
 
-        if (IsStudent)
+        if (IsStudent && assignment != null)
             await LoadMySubmission();
 
-        if (IsTeacher)
+        if (IsTeacher && assignment != null)
             await LoadSubmissionsForTeacher();
     }
+
+    // =======================================================
+    // ХЕЛПЕРИ ЛОКАЛІЗАЦІЇ (Використовуємо сервіс L)
+    // =======================================================
+
+    private string TranslateSubmissionStatus(SubmissionStatus status) => status.ToString(); // Використовуємо L.Get() у розмітці
+
+    private string TranslateAssignmentStatus(string status) => status; // Використовуємо L.Get() у розмітці
+
+    private  BadgeStyle GetSubmissionBadgeStyle(SubmissionStatus status) => status switch
+    {
+        SubmissionStatus.Submitted =>  BadgeStyle.Primary,
+        SubmissionStatus.Graded =>  BadgeStyle.Success,
+        SubmissionStatus.NotSubmitted =>  BadgeStyle.Warning,
+        SubmissionStatus.ReturnedForRevision =>  BadgeStyle.Info,
+        _ =>  BadgeStyle.Light
+    };
+
+    private  BadgeStyle GetAssignmentBadgeStyle(string status) => status switch
+    {
+        "Published" =>  BadgeStyle.Success,
+        "Closed" =>  BadgeStyle.Dark,
+        _ =>  BadgeStyle.Warning
+    };
+
+    // =======================================================
+    // ЛОГІКА ЗАВАНТАЖЕННЯ ДАНИХ
+    // =======================================================
 
     private async Task LoadAssignment()
     {
@@ -505,12 +460,9 @@
 
         try
         {
-            if (!IsAuthenticated)
-                return;
-
+            if (!IsAuthenticated) return;
             assignment = await AssignmentService.GetByIdAsync(ClassroomId, AssignmentId, CancellationToken.None);
-            if (assignment == null)
-                error = "Завдання не знайдено.";
+            if (assignment == null) error = L.Get("AssignmentNotFound");
         }
         catch (Exception ex)
         {
@@ -526,19 +478,18 @@
     {
         try
         {
-            mySubmission = await SubmissionService.EnsureForStudentAsync(
-                AssignmentId,
-                Guid.Parse(CurrentUser.User!.UserId),
-                CancellationToken.None);
+            mySubmission = await SubmissionService.EnsureForStudentAsync(AssignmentId, CurrentUserId, CancellationToken.None);
+
+            // Якщо є оцінка, попередньо заповнюємо форму викладача (якщо він перевіряє)
+            if (mySubmission.Score.HasValue && IsTeacher)
+            {
+                gradeValue = mySubmission.Score.Value;
+                gradeComment = mySubmission.TeacherComment;
+            }
         }
         catch (Exception ex)
         {
-            Toast.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Error,
-                Summary = "Помилка завантаження відповіді",
-                Detail = ex.Message
-            });
+            Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = L.Get("ErrorLoadingSubmission"), Detail = ex.Message });
         }
     }
 
@@ -546,77 +497,36 @@
     {
         try
         {
-            submissions = (await SubmissionService.GetForAssignmentAsync(
-                AssignmentId,
-                CancellationToken.None)).ToList();
+            submissions = (await SubmissionService.GetForAssignmentAsync(AssignmentId, CancellationToken.None)).ToList();
         }
         catch (Exception ex)
         {
-            Toast.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Error,
-                Summary = "Помилка завантаження відповідей",
-                Detail = ex.Message
-            });
+            Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = L.Get("ErrorLoadingSubmissions"), Detail = ex.Message });
         }
     }
 
-    private string GetAssignmentUploadUrl()
-        => $"/api/files/upload/assignment/{AssignmentId}?classroomId={ClassroomId}";
+    // =======================================================
+    // ЛОГІКА ДІЙ (UPLOAD, SUBMIT, GRADE)
+    // =======================================================
 
-    private string GetSubmissionUploadUrl()
-        => mySubmission is null
-            ? string.Empty
-            : $"/api/files/upload/submission?submissionId={mySubmission.Id}&classroomId={ClassroomId}";
+    private string GetAssignmentUploadUrl() => $"/api/files/upload/assignment/{AssignmentId}?classroomId={ClassroomId}";
 
-    private async Task OnUploadCompleted(UploadCompleteEventArgs _)
-    {
-        Toast.Notify(new NotificationMessage
-        {
-            Severity = NotificationSeverity.Success,
-            Summary = "Файл(и) завантажено",
-            Detail = "Список файлів завдання оновлено.",
-            Duration = 3000
-        });
+    private string GetSubmissionUploadUrl() => mySubmission is null
+        ? string.Empty
+        : $"/api/files/upload/submission?submissionId={mySubmission.Id}&classroomId={ClassroomId}";
 
-        await LoadAssignment();
-        StateHasChanged();
-    }
-
-    private void OnUploadError(UploadErrorEventArgs args)
-    {
-        Toast.Notify(new NotificationMessage
-        {
-            Severity = NotificationSeverity.Error,
-            Summary = "Помилка завантаження файлу",
-            Detail = args.Message,
-            Duration = 5000
-        });
-    }
+    private async Task OnUploadCompleted(UploadCompleteEventArgs _) => await LoadAssignment();
+    private void OnUploadError(UploadErrorEventArgs args) => Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = L.Get("ErrorUploadingFile"), Detail = args.Message, Duration = 5000 });
 
     private async Task OnSubmissionUploadCompleted(UploadCompleteEventArgs _)
     {
-        Toast.Notify(new NotificationMessage
-        {
-            Severity = NotificationSeverity.Success,
-            Summary = "Відповідь завантажено",
-            Detail = "Файли прикріплено до вашої роботи.",
-            Duration = 3000
-        });
-
+        Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = L.Get("ResponseUploaded"), Detail = L.Get("FilesAttachedToWork"), Duration = 3000 });
         await LoadMySubmission();
-        StateHasChanged();
     }
 
     private void OnSubmissionUploadError(UploadErrorEventArgs args)
     {
-        Toast.Notify(new NotificationMessage
-        {
-            Severity = NotificationSeverity.Error,
-            Summary = "Помилка завантаження відповіді",
-            Detail = args.Message,
-            Duration = 5000
-        });
+        Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = L.Get("ErrorUploadingResponse"), Detail = args.Message, Duration = 5000 });
     }
 
     private async Task DownloadFile(Guid fileId)
@@ -626,92 +536,74 @@
         await Task.CompletedTask;
     }
 
+    // ВИПРАВЛЕНО: Додана реалізація DeleteFile
+    private async Task DeleteFile(Guid fileId)
+    {
+        var result = await DialogService.Confirm(L.Get("ConfirmFileDeletion"), L.Get("DeleteFile"), new ConfirmOptions { OkButtonText = L.Get("Yes"), CancelButtonText = L.Get("No") });
+
+        if (result == true)
+        {
+            // TODO: Реалізувати FileService.Delete(fileId)
+            Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Info, Summary = L.Get("Todo"), Detail = "Видалення файлу не реалізовано." });
+        }
+    }
+
     private void OpenMaterial(Guid materialId)
         => Nav.NavigateTo($"/classrooms/{ClassroomId}/materials/{materialId}");
 
     private async Task OpenDeleteDialog()
     {
-        var confirm = await DialogService.Confirm(
-            "Функціонал повного видалення завдання буде реалізовано пізніше.",
-            "Підтвердження");
+        var result = await DialogService.OpenAsync<ConfirmDeleteDialog>(
+           L.Get("DeleteAssignment"),
+           new Dictionary<string, object>
+           {
+                { "Title", L.Get("ConfirmDeleteAssignmentTitle") },
+                { "Message", L.Get("ConfirmDeleteAssignmentMessage") },
+                { "EntityName", assignment!.Title }
+           },
+           new DialogOptions() { Width = "450px", CssClass = "custom-dialog" });
 
-        if (confirm == true)
+        if (result is true)
         {
-            Toast.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Info,
-                Summary = "Видалення",
-                Detail = "Зараз видалення не реалізовано.",
-                Duration = 3000
-            });
+            // TODO: Реалізувати AssignmentService.DeleteAsync
+            Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = L.Get("Todo"), Detail = L.Get("DeleteAssignmentConfirmed") });
+            Nav.NavigateTo($"/classrooms/{ClassroomId}"); // Редірект на головну класу
         }
     }
 
     private Task ChangeStatus(string newStatus)
     {
-        Toast.Notify(new NotificationMessage
+        // TODO: Реалізувати AssignmentService.UpdateStatusAsync
+        Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Info, Summary = L.Get("Todo"), Detail = L.Get("StatusChangeNotImplemented", newStatus) });
+        if (assignment is not null)
         {
-            Severity = NotificationSeverity.Info,
-            Summary = "Зміна статусу",
-            Detail = "Зміна статусу поки не реалізована на бекенді.",
-            Duration = 3000
-        });
-
+            assignment = assignment with { Status = newStatus };
+        }
         return Task.CompletedTask;
     }
 
-    // ====== STUDENT: SUBMIT WORK ======
     private async Task SubmitMyWorkAsync()
     {
-        if (mySubmission is null)
-            return;
-
-        if (!CanSubmitNow)
-        {
-            Toast.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Warning,
-                Summary = "Не можна здати роботу",
-                Detail = "Прикріпіть хоча б один файл перед здачею.",
-                Duration = 4000
-            });
-            return;
-        }
+        // ... (Ваша логіка SubmitMyWorkAsync)
+        if (mySubmission is null || !CanSubmitNow) return;
 
         try
         {
             await SubmissionService.SubmitAsync(mySubmission.Id, CancellationToken.None);
-
-            Toast.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Success,
-                Summary = "Роботу здано",
-                Detail = "Ваша відповідь відправлена викладачу.",
-                Duration = 4000
-            });
-
+            Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = L.Get("WorkSubmitted"), Detail = L.Get("ResponseSentToTeacher"), Duration = 4000 });
             await LoadMySubmission();
-            if (IsTeacher)
-                await LoadSubmissionsForTeacher();
+            if (IsTeacher) await LoadSubmissionsForTeacher();
         }
         catch (Exception ex)
         {
-            Toast.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Error,
-                Summary = "Помилка здачі роботи",
-                Detail = ex.Message,
-                Duration = 5000
-            });
+            Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = L.Get("ErrorSubmittingWork"), Detail = ex.Message, Duration = 5000 });
         }
     }
 
-    // ====== TEACHER: CHOOSE SUBMISSION & GRADE ======
     private void OnSubmissionRowClick(DataGridRowMouseEventArgs<SubmissionListItemDto> args)
     {
         selectedSubmission = args.Data;
         gradeValue = selectedSubmission.Score;
-        gradeComment = null;
     }
 
     private void ClearGradeForm()
@@ -723,67 +615,23 @@
 
     private async Task SaveGradeAsync()
     {
-        if (selectedSubmission == null)
-            return;
-
-        if (!gradeValue.HasValue)
-        {
-            Toast.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Warning,
-                Summary = "Оцінка не вказана",
-                Detail = "Введіть бал перед збереженням.",
-                Duration = 4000
-            });
-            return;
-        }
-
-        if (CurrentUser.User is null || !Guid.TryParse(CurrentUser.User.UserId, out var teacherId))
-        {
-            Toast.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Error,
-                Summary = "Помилка",
-                Detail = "Некоректний викладач.",
-                Duration = 4000
-            });
-            return;
-        }
+        // ... (Ваша логіка SaveGradeAsync)
+        if (selectedSubmission == null || !gradeValue.HasValue) return;
+        if (!Guid.TryParse(CurrentUser.User!.UserId, out var teacherId)) return;
 
         try
         {
-            var dto = new GradeSubmissionDto(
-                selectedSubmission.Id,
-                gradeValue.Value,
-                gradeComment
-            );
-
+            var dto = new GradeSubmissionDto(selectedSubmission.Id, gradeValue.Value, gradeComment);
             await SubmissionService.GradeAsync(dto, teacherId, CancellationToken.None);
 
-            Toast.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Success,
-                Summary = "Оцінка збережена",
-                Detail = "Оцінка успішно виставлена.",
-                Duration = 4000
-            });
+            Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = L.Get("GradeSaved"), Detail = L.Get("GradeSuccessfullySet"), Duration = 4000 });
 
             await LoadSubmissionsForTeacher();
-
-            if (IsStudent)
-                await LoadMySubmission();
-
             ClearGradeForm();
         }
         catch (Exception ex)
         {
-            Toast.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Error,
-                Summary = "Помилка збереження оцінки",
-                Detail = ex.Message,
-                Duration = 5000
-            });
+            Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = L.Get("ErrorSavingGrade"), Detail = ex.Message, Duration = 5000 });
         }
     }
 

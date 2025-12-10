@@ -3,16 +3,20 @@
 @using Radzen
 @using SmartClass.Application.Contracts.Auth
 @using SmartClass.Application.Contracts.User
+@using SmartClass.Application.Contracts.Notifications
+@using SmartClass.Application.Abstractions
 @using SmartClass.Web.Components.Shared
 @using SmartClass.Web.Services
 @using SmartClass.Web.Components.Pages.Classrooms
+@using System.Text.Json
 
 @inject NavigationManager NavigationManager
 @inject CurrentUserState CurrentUser
 @inject DialogService DialogService
-@inject NotificationService NotificationService
+@inject NotificationService Toast         
 @inject IJSRuntime JS
 @inject AuthApiClient AuthApi
+@inject INotificationService NotificationAppService  
 @implements IDisposable
 
 <AppUserFromLocalStorageInitializer />
@@ -22,57 +26,176 @@
 
     <!-- HEADER -->
     <RadzenHeader class="custom-header">
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Style="height: 100%; padding: 0 1.5rem;">
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.SpaceBetween"
+                     Style="height: 100%; padding: 0 1.5rem;">
 
             <!-- ЛІВА ЧАСТИНА: МЕНЮ + ЛОГО -->
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="16px">
                 @if (IsAuthenticated)
                 {
-                    <RadzenButton Icon="menu" Variant="Variant.Text" Style="color: var(--primary-color);" Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+                    <RadzenButton Icon="menu"
+                                  Variant="Variant.Text"
+                                  Style="color: var(--primary-color);"
+                                  Click="@(() => sidebarExpanded = !sidebarExpanded)" />
                 }
 
-                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="10px" Style="cursor: pointer;" @onclick="NavigateToHome">
+                <RadzenStack Orientation="Orientation.Horizontal"
+                             AlignItems="AlignItems.Center"
+                             Gap="10px"
+                             Style="cursor: pointer;"
+                             @onclick="NavigateToHome">
                     <RadzenImage Path="/logo.png" Style="width: 34px; height: 34px;" />
-                    <span class="header-logo-text rz-display-none rz-display-sm-block" style="font-size: 1.25rem;">SMART CLASS</span>
+                    <span class="header-logo-text rz-display-none rz-display-sm-block"
+                          style="font-size: 1.25rem;">
+                        SMART CLASS
+                    </span>
                 </RadzenStack>
             </RadzenStack>
 
-            <!-- ПРАВА ЧАСТИНА: КНОПКИ / ПРОФІЛЬ -->
+            <!-- ПРАВА ЧАСТИНА: НОТИФІКАЦІЇ + ПРОФІЛЬ / ЛОГІН -->
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
 
                 @if (!IsReady)
                 {
-                    <RadzenProgressBarCircular Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" Style="color: var(--primary-color);" />
+                    <RadzenProgressBarCircular Value="100"
+                                               ShowValue="false"
+                                               Mode="ProgressBarMode.Indeterminate"
+                                               Size="ProgressBarCircularSize.Small"
+                                               Style="color: var(--primary-color);" />
                 }
                 else if (IsAuthenticated && userInfo != null)
                 {
+                    <!-- 🔔 НОТИФІКАЦІЇ -->
+                    <div class="notif-wrapper">
+                        <RadzenButton Icon="notifications"
+                                      Variant="Variant.Text"
+                                      ButtonStyle="ButtonStyle.Light"
+                                      Style="color: var(--primary-color); position: relative;"
+                                      Click="@ToggleNotificationsAsync" />
+
+                        @if (UnreadCount > 0)
+                        {
+                            <span class="notif-badge">@UnreadCount</span>
+                        }
+
+                        @if (notificationsOpen)
+                        {
+                            <div class="notif-panel shadow-md">
+                                <div class="notif-panel-header">
+                                    <span>Оповіщення</span>
+                                    @if (notificationsLoading)
+                                    {
+                                        <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate"
+                                                                   Size="ProgressBarCircularSize.Small"
+                                                                   Style="width: 18px; height: 18px;" />
+                                    }
+                                    else
+                                    {
+                                        <RadzenButton Icon="refresh"
+                                                      Variant="Variant.Text"
+                                                      Size="ButtonSize.Small"
+                                                      Style="min-width:auto;"
+                                                      Click="@ReloadNotificationsAsync" />
+                                    }
+                                </div>
+
+                                @if (!notificationsLoading && notifications.Count == 0)
+                                {
+                                    <div class="notif-empty">
+                                        <RadzenIcon Icon="check_circle" Style="font-size: 1.6rem; opacity: .6;" />
+                                        <span>Немає нових оповіщень</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="notif-list">
+                                        @foreach (var n in notifications)
+                                        {
+                                            var (title, description) = GetNotificationText(n);
+
+                                            <div class="notif-item @(n.IsRead ? "read" : "unread")"
+                                                 @onclick="@(() => OnNotificationClickAsync(n))">
+                                                <div class="notif-item-main">
+                                                    <div class="notif-item-title">@title</div>
+                                                    @if (!string.IsNullOrWhiteSpace(description))
+                                                    {
+                                                        <div class="notif-item-desc">@description</div>
+                                                    }
+                                                </div>
+                                                <div class="notif-item-meta">
+                                                    <span class="notif-time">@n.CreatedAt.ToLocalTime().ToString("dd.MM HH:mm")</span>
+
+                                                    @if (!n.IsRead)
+                                                    {
+                                                        <span class="notif-dot"></span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
+                                <div class="notif-footer">
+                                    <RadzenButton Text="Всі оповіщення"
+                                                  Icon="notifications"
+                                                  Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Light"
+                                                  Variant="Variant.Flat"
+                                                  Click="@(() => NavigationManager.NavigateTo("/notifications"))" />
+                                </div>
+                            </div>
+                        }
+                    </div>
+
                     <!-- Профіль -->
                     <RadzenProfileMenu Style="background-color: transparent; border: none; color: var(--primary-color);">
                         <Template>
-                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="12px" Style="padding: 4px 8px; border-radius: 50px; transition: background 0.2s;">
-                                <RadzenText Text="@($"{userInfo.Firstname} {userInfo.Lastname}")" Style="color: var(--text-main); font-weight: 600; font-size: 0.9rem;" class="rz-display-none rz-display-sm-block" />
-                                <RadzenImage Path="/avatars/avatar.png" Style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); object-fit: cover;" />
+                            <RadzenStack Orientation="Orientation.Horizontal"
+                                         AlignItems="AlignItems.Center"
+                                         Gap="12px"
+                                         Style="padding: 4px 8px; border-radius: 50px; transition: background 0.2s;">
+                                <RadzenText Text="@($"{userInfo.Firstname} {userInfo.Lastname}")"
+                                            Style="color: var(--text-main); font-weight: 600; font-size: 0.9rem;"
+                                            class="rz-display-none rz-display-sm-block" />
+                                <RadzenImage Path="/avatars/avatar.png"
+                                             Style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); object-fit: cover;" />
                             </RadzenStack>
                         </Template>
                         <ChildContent>
                             <div style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">
-                                <span style="display:block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Акаунт</span>
-                                <span style="display:block; font-weight: 600; color: var(--text-main); margin-top: 4px;">@userInfo.Email</span>
+                                <span style="display:block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">
+                                    Акаунт
+                                </span>
+                                <span style="display:block; font-weight: 600; color: var(--text-main); margin-top: 4px;">
+                                    @userInfo.Email
+                                </span>
                             </div>
 
                             <RadzenProfileMenuItem Text="Мій профіль" Path="userInfo" Icon="account_circle" />
 
-
-
-                            <RadzenButton Text="Logout" Click="@DoLogoutAsync" Icon="logout" ButtonStyle="ButtonStyle.Base " Variant="Variant.Outlined" Style="border-radius: 8px; justify-content: center" />
+                            <div style="padding: 10px 16px;">
+                                <RadzenButton Text="Вийти"
+                                              Click="@DoLogoutAsync"
+                                              Icon="logout"
+                                              ButtonStyle="ButtonStyle.Base"
+                                              Variant="Variant.Outlined"
+                                              Style="border-radius: 8px; justify-content: center; width: 100%;" />
+                            </div>
                         </ChildContent>
                     </RadzenProfileMenu>
                 }
                 else
                 {
                     <RadzenStack Orientation="Orientation.Horizontal" Gap="12px">
-                        <RadzenButton Text="Увійти" Click="@(() => NavigationManager.NavigateTo("/login"))" Variant="Variant.Text" Style="color: var(--primary-color); font-weight: 600;" />
-                        <RadzenButton Text="Реєстрація" Click="@(() => NavigationManager.NavigateTo("/register"))" class="btn-primary-custom" />
+                        <RadzenButton Text="Увійти"
+                                      Click="@(() => NavigationManager.NavigateTo("/login"))"
+                                      Variant="Variant.Text"
+                                      Style="color: var(--primary-color); font-weight: 600;" />
+                        <RadzenButton Text="Реєстрація"
+                                      Click="@(() => NavigationManager.NavigateTo("/register"))"
+                                      class="btn-primary-custom" />
                     </RadzenStack>
                 }
             </RadzenStack>
@@ -87,9 +210,17 @@
             <RadzenSidebar @bind-Expanded="@sidebarExpanded" Style="width: 270px; height: 100%;">
 
                 <div style="padding: 24px 0; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 10px;">
-                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Gap="10px" Style="cursor: pointer;" @onclick="NavigateToHome">
-                        <RadzenImage Path="/logo.png" Style="width: 32px; height: 32px; filter: brightness(0) invert(1);" />
-                        <span style="font-family: 'Inter', sans-serif; font-weight: 700; letter-spacing: 1px; font-size: 1.1rem; color: white;">SMART CLASS</span>
+                    <RadzenStack Orientation="Orientation.Horizontal"
+                                 AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.Center"
+                                 Gap="10px"
+                                 Style="cursor: pointer;"
+                                 @onclick="NavigateToHome">
+                        <RadzenImage Path="/logo.png"
+                                     Style="width: 32px; height: 32px; filter: brightness(0) invert(1);" />
+                        <span style="font-family: 'Inter', sans-serif; font-weight: 700; letter-spacing: 1px; font-size: 1.1rem; color: white;">
+                            SMART CLASS
+                        </span>
                     </RadzenStack>
                 </div>
 
@@ -99,15 +230,23 @@
                     <RadzenPanelMenuItem Text="Профіль" Icon="settings" Path="userInfo" />
 
                     <div style="margin-top: 30px; padding-left: 24px; margin-bottom: 10px;">
-                        <span style="font-size: 0.75rem; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 700; letter-spacing: 1px;">Швидкі дії</span>
+                        <span style="font-size: 0.75rem; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 700; letter-spacing: 1px;">
+                            Швидкі дії
+                        </span>
                     </div>
 
-                    <RadzenPanelMenuItem Text="Створити проєкт" Icon="add_circle" Click="@OpenCreateClassDialog" />
+                    @if (IsTeacher)
+                    {
+                        <RadzenPanelMenuItem Text="Створити клас" Icon="add_circle" Click="@OpenCreateClassDialog" />
+                    }
+                    <RadzenPanelMenuItem Text="Приєднатися до класу" Icon="group_add" Click="@OpenJoinClassDialog" />
                 </RadzenPanelMenu>
 
                 <div style="padding: 20px; margin-top: auto;">
                     <div style="background: rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; text-align: center; backdrop-filter: blur(5px);">
-                        <p style="margin: 0 0 10px 0; font-size: 0.8rem; color: rgba(255,255,255,0.9);">Потрібна допомога?</p>
+                        <p style="margin: 0 0 10px 0; font-size: 0.8rem; color: rgba(255,255,255,0.9);">
+                            Потрібна допомога?
+                        </p>
                         <RadzenButton Text="Підтримка"
                                       Icon="help_outline"
                                       Variant="Variant.Outlined"
@@ -125,7 +264,10 @@
 
                 @if (!CurrentUser.IsInitialized)
                 {
-                    <RadzenProgressBarCircular Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" Style="color: var(--primary-color);" />
+                    <RadzenProgressBarCircular Value="100"
+                                               ShowValue="false"
+                                               Mode="ProgressBarMode.Indeterminate"
+                                               Style="color: var(--primary-color);" />
                 }
                 else
                 {
@@ -141,6 +283,133 @@
 
 </RadzenLayout>
 
+<style>
+    .notif-wrapper {
+        position: relative;
+    }
+
+    .notif-badge {
+        position: absolute;
+        top: 2px;
+        right: 4px;
+        background: #ef4444;
+        color: white;
+        border-radius: 999px;
+        padding: 0 6px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        line-height: 1.3;
+        transform: translate(50%, -50%);
+    }
+
+    .notif-panel {
+        position: absolute;
+        top: 110%;
+        right: 0;
+        width: min(360px, 80vw);
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        padding: 8px 0 4px 0;
+        z-index: 2000;
+    }
+
+    .notif-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 12px 8px 16px;
+        border-bottom: 1px solid #e5e7eb;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #0f172a;
+    }
+
+    .notif-empty {
+        padding: 12px;
+        text-align: center;
+        font-size: 0.85rem;
+        color: #6b7280;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .notif-list {
+        max-height: 320px;
+        overflow-y: auto;
+    }
+
+    .notif-item {
+        padding: 8px 14px;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+
+    .notif-item.unread {
+        background: #eff6ff;
+    }
+
+    .notif-item.read:hover,
+    .notif-item.unread:hover {
+        background: #e5e7eb;
+    }
+
+    .notif-item-main {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .notif-item-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #0f172a;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .notif-item-desc {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-top: 2px;
+        max-height: 2.3em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .notif-item-meta {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+        font-size: 0.7rem;
+    }
+
+    .notif-time {
+        color: #9ca3af;
+        white-space: nowrap;
+    }
+
+    .notif-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #2563eb;
+    }
+
+    .notif-footer {
+        border-top: 1px solid #e5e7eb;
+        padding: 6px 10px 4px 10px;
+        display: flex;
+        justify-content: center;
+    }
+</style>
+
 @code {
     private bool sidebarExpanded = true;
     private bool IsReady => CurrentUser.IsInitialized;
@@ -153,14 +422,37 @@
             r.Contains("викладач", StringComparison.OrdinalIgnoreCase)
         ) == true;
 
+    // 🔔 стан нотифікацій
+    private bool notificationsOpen;
+    private bool notificationsLoading;
+    private List<NotificationDto> notifications = new();
+
+    private int UnreadCount => notifications.Count(n => !n.IsRead);
+
     protected override void OnInitialized()
     {
         CurrentUser.OnChange += HandleUserStateChanged;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && IsAuthenticated)
+        {
+            await LoadNotificationsAsync();
+            StateHasChanged();
+        }
+    }
+
     private void HandleUserStateChanged()
     {
-        InvokeAsync(StateHasChanged);
+        InvokeAsync(async () =>
+        {
+            if (IsAuthenticated)
+            {
+                await LoadNotificationsAsync();
+            }
+            StateHasChanged();
+        });
     }
 
     public void Dispose()
@@ -168,11 +460,184 @@
         CurrentUser.OnChange -= HandleUserStateChanged;
     }
 
+    // ------------------- НОТИФІКАЦІЇ -------------------
 
+    private async Task ToggleNotificationsAsync()
+    {
+        notificationsOpen = !notificationsOpen;
+
+        if (notificationsOpen && notifications.Count == 0 && IsAuthenticated)
+        {
+            await LoadNotificationsAsync();
+        }
+    }
+
+    private async Task ReloadNotificationsAsync()
+    {
+        await LoadNotificationsAsync();
+    }
+
+    private async Task LoadNotificationsAsync()
+    {
+        if (!IsAuthenticated)
+            return;
+
+        if (!Guid.TryParse(CurrentUser.User!.UserId, out var userId))
+            return;
+
+        notificationsLoading = true;
+        try
+        {
+            var list = await NotificationAppService.GetForUserAsync(
+                userId,
+                onlyUnread: false,
+                CancellationToken.None);
+
+            notifications = list
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(25)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Помилка завантаження оповіщень",
+                Detail = ex.Message,
+                Duration = 4000
+            });
+        }
+        finally
+        {
+            notificationsLoading = false;
+        }
+    }
+
+    private (string title, string? description) GetNotificationText(NotificationDto n)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(n.PayloadJson ?? "{}");
+            var root = doc.RootElement;
+
+            switch (n.Type)
+            {
+                case "AssignmentPublished":
+                    {
+                        var title = root.TryGetProperty("Title", out var t)
+                            ? t.GetString()
+                            : "Нове завдання";
+
+                        string? due = null;
+                        if (root.TryGetProperty("DueAt", out var d) && d.ValueKind != JsonValueKind.Null)
+                        {
+                            if (DateTime.TryParse(d.GetString(), out var dueDt))
+                            {
+                                due = $"Дедлайн: {dueDt.ToLocalTime():dd.MM HH:mm}";
+                            }
+                        }
+
+                        return (title ?? "Нове завдання", due);
+                    }
+
+                case "GradeUpdated":
+                    {
+                        var scoreStr = root.TryGetProperty("Score", out var s)
+                            ? s.ToString()
+                            : null;
+
+                        var comment = root.TryGetProperty("Comment", out var c)
+                            ? c.GetString()
+                            : null;
+
+                        var title = "Оновлено оцінку";
+                        string? desc = null;
+
+                        if (!string.IsNullOrWhiteSpace(scoreStr))
+                            desc = $"Ваша оцінка: {scoreStr}";
+
+                        if (!string.IsNullOrWhiteSpace(comment))
+                            desc = (desc == null ? "" : desc + " • ") + comment;
+
+                        return (title, desc);
+                    }
+
+                case "StudentJoinedClassroom":
+                    {
+                        var studentName = root.TryGetProperty("StudentName", out var sn)
+                            ? sn.GetString()
+                            : "Новий студент";
+
+                        var classTitle = root.TryGetProperty("ClassroomTitle", out var ct)
+                            ? ct.GetString()
+                            : "клас";
+
+                        return ($"{studentName} приєднався до класу", classTitle);
+                    }
+
+                case "SubmissionSubmitted":
+                    {
+                        return ("Нова робота від студента", "Перегляньте подану відповідь.");
+                    }
+
+                default:
+                    return ("Нове оповіщення", null);
+            }
+        }
+        catch
+        {
+            return ("Нове оповіщення", null);
+        }
+    }
+
+    private async Task OnNotificationClickAsync(NotificationDto n)
+    {
+        try
+        {
+            if (!n.IsRead)
+            {
+                if (CurrentUser.User is null ||
+                    !Guid.TryParse(CurrentUser.User.UserId, out var userId))
+                {
+                    // не можемо коректно визначити користувача – просто не відмічаємо як прочитане
+                    return;
+                }
+
+                await NotificationAppService.MarkAsReadAsync(
+                    notificationId: n.Id,
+                    userId: userId,
+                    ct: CancellationToken.None);
+
+                // ОНОВЛЮЄМО ЛОКАЛЬНИЙ СПИСОК (див. пункт 2)
+                var index = notifications.FindIndex(x => x.Id == n.Id);
+                if (index >= 0)
+                {
+                    var updated = notifications[index] with { IsRead = true };
+                    notifications[index] = updated;
+                }
+            }
+
+            // 👉 Після кліку – перехід
+            NavigationManager.NavigateTo("/notifications");
+        }
+        catch (Exception ex)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Помилка",
+                Detail = ex.Message,
+                Duration = 4000
+            });
+        }
+    }
+
+
+    // ------------------- AUTH / МЕНЮ -------------------
 
     private async Task DoLogoutAsync()
     {
-        // 1) спроба відправити logout на бекенд (ревокнути refresh токен)
         try
         {
             var refreshToken = await JS.InvokeAsync<string?>("localStorage.getItem", "refreshToken");
@@ -180,35 +645,31 @@
             if (!string.IsNullOrWhiteSpace(refreshToken) && CurrentUser.User != null)
             {
                 var dto = new LogoutDto(CurrentUser.User.UserId, refreshToken);
-                await AuthApi.LogoutAsync(dto); // метод у AuthApiClient, який б’є в api/auth/logout
+                await AuthApi.LogoutAsync(dto);
             }
         }
         catch
         {
-            // якщо бекенд впав — все одно лог аутимося на клієнті
+            // бекенд міг впасти — все одно чистимо клієнт
         }
 
-        // 2) чистимо localStorage
         await JS.InvokeVoidAsync("localStorage.removeItem", "accessToken");
         await JS.InvokeVoidAsync("localStorage.removeItem", "refreshToken");
 
-        // 3) чистимо Bearer
         AuthApi.SetBearer(null);
 
-        // 4) чистимо локальний стан
         CurrentUser.Clear();
 
-        NotificationService.Notify(new NotificationMessage
+        Toast.Notify(new NotificationMessage
         {
             Severity = NotificationSeverity.Success,
-            Summary = "Logout",
-            Detail = "You have been logged out.",
+            Summary = "Вихід",
+            Detail = "Ви вийшли із системи.",
             Duration = 3000
         });
 
         NavigationManager.NavigateTo("/");
     }
-
 
     private void NavigateToHome() => NavigationManager.NavigateTo("/");
 
@@ -216,10 +677,10 @@
     {
         if (!IsTeacher)
         {
-            NotificationService.Notify(new NotificationMessage
+            Toast.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Warning,
-                Summary = "Access denied",
+                Summary = "Доступ заборонено",
                 Detail = "Тільки викладачі можуть створювати класи.",
                 Duration = 4000
             });

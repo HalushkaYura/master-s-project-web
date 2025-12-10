@@ -1,22 +1,28 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SmartClass.Application.Abstractions;
 using SmartClass.Application.Contracts.Classrooms;
+using SmartClass.Application.Contracts.Notifications;
 using SmartClass.Domain.Entities;
 using SmartClass.Domain.Enums;
 using SmartClass.Infrastructure.Identity.Entities;
 using SmartClass.Infrastructure.Persistence;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace SmartClass.Infrastructure.Services
 {
     public sealed class ClassroomService : IClassroomService
     {
         private readonly IDbContextFactory<AppDbContext> dbFactory;
+        private readonly INotificationService _notifications;
 
-        public ClassroomService(IDbContextFactory<AppDbContext> dbContext)
+        public ClassroomService(
+            IDbContextFactory<AppDbContext> dbContext,
+            INotificationService notifications)
         {
-            this.dbFactory = dbContext;
+            dbFactory = dbContext;
+            _notifications = notifications;
         }
 
         public async Task<ClassroomDto> CreateClassroomAsync(
@@ -25,18 +31,16 @@ namespace SmartClass.Infrastructure.Services
             CancellationToken ct = default)
         {
             await using var db = await dbFactory.CreateDbContextAsync(ct);
-            // 🔹 (опційно) перевіряємо, що користувач взагалі існує
+
             var ownerExists = await db.Users.AnyAsync(u => u.Id == ownerId, ct);
             if (!ownerExists)
                 throw new InvalidOperationException("Owner user does not exist.");
 
-            // 1) генеруємо код
             var joinCode = await GenerateUniqueJoinCodeAsync(ct);
 
-            // 2) Classroom
             var classroom = new Classroom
             {
-                Id = Guid.NewGuid(),   // 👈 явно задаємо Id (якщо BaseEntity не робить цього)
+                Id = Guid.NewGuid(),
                 OwnerId = ownerId,
                 Title = dto.Title,
                 Section = dto.Section,
@@ -45,16 +49,14 @@ namespace SmartClass.Infrastructure.Services
                 IsArchived = false
             };
 
-            // 3) викладач як ClassMember
             var classMember = new ClassMember
             {
                 Id = Guid.NewGuid(),
-                ClassroomId = classroom.Id,     // посилання на щойно згенерований Id
+                ClassroomId = classroom.Id,
                 UserId = ownerId,
                 RoleInClass = ClassRole.Teacher.ToString()
             };
 
-            // 4) канал для класу
             var channel = new Channel
             {
                 Id = Guid.NewGuid(),
@@ -63,7 +65,6 @@ namespace SmartClass.Infrastructure.Services
                 Title = "Чат класу"
             };
 
-            // 5) викладач як учасник каналу
             var channelMember = new ChannelMember
             {
                 Id = Guid.NewGuid(),
@@ -72,13 +73,11 @@ namespace SmartClass.Infrastructure.Services
                 IsMuted = false
             };
 
-            // 6) додаємо ВСЕ в один DbContext
             await db.Classrooms.AddAsync(classroom, ct);
             await db.ClassMembers.AddAsync(classMember, ct);
             await db.Channels.AddAsync(channel, ct);
             await db.ChannelMembers.AddAsync(channelMember, ct);
 
-            // 7) один SaveChangesAsync → одна транзакція
             await db.SaveChangesAsync(ct);
 
             return new ClassroomDto
@@ -100,6 +99,7 @@ namespace SmartClass.Infrastructure.Services
         {
             if (string.IsNullOrWhiteSpace(joinCode))
                 throw new ArgumentException("Join code is required.", nameof(joinCode));
+
             await using var db = await dbFactory.CreateDbContextAsync(ct);
 
             var classroom = await db.Classrooms
@@ -108,12 +108,10 @@ namespace SmartClass.Infrastructure.Services
             if (classroom == null)
                 throw new InvalidOperationException("Classroom with this join code was not found or is archived.");
 
-            // (опційно) перевірка існування користувача
-            var userExists = await db.Users.AnyAsync(u => u.Id == userId, ct);
-            if (!userExists)
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
+            if (user == null)
                 throw new InvalidOperationException("User does not exist.");
 
-            // 1) ClassMember
             var existingMember = await db.ClassMembers
                 .FirstOrDefaultAsync(m => m.ClassroomId == classroom.Id && m.UserId == userId, ct);
 
@@ -129,7 +127,6 @@ namespace SmartClass.Infrastructure.Services
                 await db.ClassMembers.AddAsync(member, ct);
             }
 
-            // 2) канал цього класу
             var classChannel = await db.Channels
                 .FirstOrDefaultAsync(ch => ch.ClassroomId == classroom.Id, ct);
 
@@ -152,6 +149,26 @@ namespace SmartClass.Infrastructure.Services
             }
 
             await db.SaveChangesAsync(ct);
+
+            // 🔔 Нотифікація викладачу про нового студента
+            var displayName =
+                user.DisplayName ??
+                $"{(user.Firstname ?? "").Trim()} {(user.Lastname ?? "").Trim()}".Trim();
+
+            var payload = JsonSerializer.Serialize(new
+            {
+                ClassroomId = classroom.Id,
+                ClassroomTitle = classroom.Title,
+                StudentId = user.Id,
+                StudentName = string.IsNullOrWhiteSpace(displayName) ? (user.Email ?? "Student") : displayName
+            });
+
+            await _notifications.CreateAsync(
+                new CreateNotificationDto(
+                    UserId: classroom.OwnerId,
+                    Type: "StudentJoinedClassroom",
+                    PayloadJson: payload),
+                ct);
         }
 
         public async Task<IReadOnlyList<MyClassroomDto>> GetMyClassroomsAsync(
@@ -206,9 +223,9 @@ namespace SmartClass.Infrastructure.Services
         }
 
         public async Task<ClassroomDetailsDto> GetClassroomDetailsAsync(
-    Guid classroomId,
-    Guid currentUserId,
-    CancellationToken ct = default)
+            Guid classroomId,
+            Guid currentUserId,
+            CancellationToken ct = default)
         {
             await using var db = await dbFactory.CreateDbContextAsync(ct);
 
@@ -219,14 +236,12 @@ namespace SmartClass.Infrastructure.Services
             if (classroom == null)
                 throw new KeyNotFoundException("Classroom not found.");
 
-            // (опціонально) перевірка, що користувач є членом класу
             var isMember = await db.ClassMembers
                 .AnyAsync(m => m.ClassroomId == classroomId && m.UserId == currentUserId, ct);
 
             if (!isMember && classroom.OwnerId != currentUserId)
                 throw new InvalidOperationException("You are not a member of this classroom.");
 
-            // беремо усіх учасників з ApplicationUser
             var members = await db.ClassMembers
                 .Where(m => m.ClassroomId == classroomId)
                 .Join(
@@ -260,8 +275,8 @@ namespace SmartClass.Infrastructure.Services
         }
 
         public async Task<ClassroomDetailsDto> GetClassroomByJoinCodeAsync(
-    string joinCode,
-    CancellationToken ct = default)
+            string joinCode,
+            CancellationToken ct = default)
         {
             await using var db = await dbFactory.CreateDbContextAsync(ct);
 
@@ -303,6 +318,5 @@ namespace SmartClass.Infrastructure.Services
                 members
             );
         }
-
     }
 }

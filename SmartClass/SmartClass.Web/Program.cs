@@ -89,11 +89,11 @@ namespace SmartClass.Web
             builder.Services.AddScoped<ICurrentUser, CurrentUser>();
             builder.Services.AddScoped<CurrentUserState>();
             builder.Services.AddScoped<ITokenProvider, LocalStorageTokenProvider>();
+            builder.Services.AddScoped<ILocalizationService, LocalizationService>();
 
             // ---------- GENERAL REPOSITORY ----------
             builder.Services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));
 
-            // ---------- RADZEN ----------
             // ---------- RADZEN ----------
             builder.Services.AddRadzenComponents(); // <-- ДОДАЙТЕ ЦЕЙ РЯДОК
             builder.Services.AddRazorComponents()
