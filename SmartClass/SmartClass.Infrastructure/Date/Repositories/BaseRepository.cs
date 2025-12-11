@@ -2,7 +2,6 @@
 using Ardalis.Specification.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SmartClass.Application.Abstractions;
-using SmartClass.Domaine.Primitives;
 using SmartClass.Infrastructure.Persistence;
 using System.Linq.Expressions;
 

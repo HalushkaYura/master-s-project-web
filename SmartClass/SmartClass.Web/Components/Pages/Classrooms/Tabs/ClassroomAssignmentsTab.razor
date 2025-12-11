@@ -1,0 +1,163 @@
+﻿@using SmartClass.Application.Abstractions
+@using SmartClass.Application.Contracts.Assignments
+@using Radzen
+@using SmartClass.Web.Components.Pages.Assignments
+@inject IAssignmentService AssignmentService
+@inject NavigationManager Nav
+@inject Radzen.DialogService DialogService
+@inject Radzen.NotificationService Toast
+
+@if (isLoading)
+{
+    <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate"
+                               Size="ProgressBarCircularSize.Small" />
+}
+else if (error != null)
+{
+    <RadzenAlert Severity="AlertSeverity.Error"
+                 Variant="Variant.Flat"
+                 Shade="Shade.Lighter"
+                 Style="border-radius: 12px;">
+        @error
+    </RadzenAlert>
+}
+else
+{
+    @if (IsTeacher)
+    {
+        <div style="margin-bottom: 20px; display: flex; justify-content: flex-end;">
+            <RadzenButton Text="Створити завдання"
+                          Icon="add_task"
+                          Class="btn-primary-custom"
+                          Click="@OpenCreateDialog" />
+        </div>
+    }
+
+    @if (assignments == null || !assignments.Any())
+    {
+        <div style="text-align: center; color: var(--text-muted); padding: 40px; border: 2px dashed rgba(0,0,0,0.1); border-radius: 12px;">
+            <RadzenIcon Icon="quiz" Style="font-size: 3rem; opacity: 0.5;" />
+            <p>У цьому класі поки немає завдань.</p>
+        </div>
+    }
+    else
+    {
+        <RadzenDataGrid Data="@assignments"
+                        TItem="AssignmentShortDto"
+                        Class="glass-grid"
+                        RowClick="@OnRowClick">
+            <Columns>
+                <RadzenDataGridColumn TItem="AssignmentShortDto" Property="Title" Title="Завдання">
+                    <Template Context="data">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <RadzenIcon Icon="assignment" Style="color: var(--accent-color);" />
+                            <span style="font-weight: 600;">@data.Title</span>
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="AssignmentShortDto" Property="DueAt" Title="Дедлайн" Width="200px">
+                    <Template Context="data">
+                        @if (data.DueAt is null)
+                        {
+                            <span style="color: var(--text-secondary);">Без дедлайну</span>
+                        }
+                        else
+                        {
+                            <span style="@(data.DueAt < DateTime.UtcNow ? "color: #ef4444;" : "color: var(--text-secondary);")">
+                                @data.DueAt?.ToLocalTime().ToString("g")
+                            </span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="AssignmentShortDto" Property="Status" Title="Статус" Width="150px">
+                    <Template Context="data">
+                        @switch (data.Status)
+                        {
+                            case "Published":
+                                <RadzenBadge Text="Опубліковано" BadgeStyle="BadgeStyle.Success" IsPill="true" />
+                                ;
+                                break;
+                            case "Draft":
+                                <RadzenBadge Text="Чернетка" BadgeStyle="BadgeStyle.Info" IsPill="true" />
+                                ;
+                                break;
+                            case "Closed":
+                                <RadzenBadge Text="Завершено" BadgeStyle="BadgeStyle.Light" IsPill="true" />
+                                ;
+                                break;
+                            default:
+                                <RadzenBadge Text="@data.Status" BadgeStyle="BadgeStyle.Light" IsPill="true" />
+                                ;
+                                break;
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    }
+}
+
+@code {
+    [Parameter] public Guid ClassroomId { get; set; }
+    [Parameter] public bool IsTeacher { get; set; }
+
+    private List<AssignmentShortDto> assignments = new();
+    private bool isLoading = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    // 🔹 ПУБЛІЧНИЙ метод, щоб викликати з батьківського компонента
+    public async Task ReloadAsync()
+    {
+        isLoading = true;
+        error = null;
+
+        try
+        {
+            assignments = (await AssignmentService
+                .GetForClassroomAsync(ClassroomId, CancellationToken.None))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnRowClick(DataGridRowMouseEventArgs<AssignmentShortDto> args)
+    {
+        Nav.NavigateTo($"/classrooms/{ClassroomId}/assignments/{args.Data.Id}");
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var result = await DialogService.OpenAsync<AssignmentCreateDialog>(
+            "Нове завдання",
+            new Dictionary<string, object>
+            {
+                ["ClassroomId"] = ClassroomId
+            },
+            new DialogOptions
+            {
+                Width = "600px",
+                Resizable = true,
+                Draggable = true
+            });
+
+        if (result is bool ok && ok)
+        {
+            await ReloadAsync();
+        }
+    }
+}

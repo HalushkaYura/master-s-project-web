@@ -6,5 +6,11 @@ using System.Threading.Tasks;
 
 namespace SmartClass.Domain.Enums
 {
-    public enum SubmissionStatus { NotSubmitted = 0, Submitted = 1, Returned = 2 }
+    public enum SubmissionStatus
+    {
+        NotSubmitted = 0,
+        Submitted = 1,
+        Graded = 2,
+        ReturnedForRevision = 3
+    }
 }

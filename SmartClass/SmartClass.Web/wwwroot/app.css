@@ -1,51 +1,891 @@
+/* --- ІМПОРТ ШРИФТІВ --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    /* --- ПАЛІТРА --- */
+    --primary-color: #002171;
+    --primary-dark: #001040;
+    --primary-light: #3e50b4;
+    --accent-color: #42a5f5;
+    /* Текст */
+    --text-main: #1e293b; /* Slate 800 */
+    --text-secondary: #475569; /* Slate 600 */
+    --text-muted: #94a3b8; /* Slate 400 */
+    /* Скло (Ice Blue) */
+    --glass-bg: rgba(245, 248, 255, 0.96);
+    --glass-border: rgba(255, 255, 255, 0.5);
+    --glass-shadow: 0 20px 40px rgba(0, 20, 50, 0.15);
+}
+
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    color: var(--text-main);
+    background-color: #f1f5f9;
+    -webkit-font-smoothing: antialiased;
 }
 
-a, .btn-link {
-    color: #006bb7;
+/* --- ФОН --- */
+.main-background {
+    background-image: url('/foto/fone/fone5.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    position: relative;
 }
 
-.btn-primary {
-    color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
-}
-
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-.content {
-    padding-top: 1.1rem;
-}
-
-h1:focus {
-    outline: none;
-}
-
-.valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
-}
-
-.invalid {
-    outline: 1px solid #e50000;
-}
-
-.validation-message {
-    color: #e50000;
-}
-
-.blazor-error-boundary {
-    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
-    padding: 1rem 1rem 1rem 3.7rem;
-    color: white;
-}
-
-    .blazor-error-boundary::after {
-        content: "An error has occurred."
+    .main-background::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(10, 20, 40, 0.25);
+        pointer-events: none;
+        z-index: 0;
     }
 
-.darker-border-checkbox.form-check-input {
-    border-color: #929292;
+/* --- САЙДБАР --- */
+.rz-sidebar {
+    background: linear-gradient(170deg, var(--primary-color) 0%, var(--primary-dark) 100%) !important;
+    color: white !important;
+    box-shadow: 4px 0 25px rgba(0, 0, 0, 0.25);
+    z-index: 20 !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* --- МЕНЮ --- */
+.rz-panel-menu {
+    background: transparent !important;
+    border: none !important;
+    padding: 12px;
+}
+
+.rz-navigation-item-wrapper {
+    margin-bottom: 6px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.rz-navigation-item-link {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8) !important;
+    padding: 11px 16px;
+}
+
+.rz-navigation-item-icon {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.65) !important;
+    margin-right: 12px;
+}
+
+.rz-navigation-item-wrapper:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    transform: translateX(3px);
+}
+
+.rz-navigation-item-link-selected {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    border-left: 3px solid var(--accent-color);
+}
+
+    .rz-navigation-item-link-selected .rz-navigation-item-icon {
+        color: var(--accent-color) !important;
+    }
+
+/* --- ХЕДЕР --- */
+.custom-header {
+    background-color: rgba(245, 248, 255, 0.98) !important;
+    height: 64px;
+    border-bottom: 1px solid rgba(0, 33, 113, 0.08);
+    box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.03);
+    z-index: 15;
+    position: relative;
+}
+
+.header-logo-text {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--primary-color);
+}
+
+/* --- СКЛЯНА КАРТКА --- */
+.layout-content-center {
+    display: flex;
+    flex-direction: column; /* ЗМІНА: Елементи йдуть зверху вниз */
+    justify-content: flex-start; /* ЗМІНА: Починаємо зверху, а не з центру */
+    align-items: center; /* Центруємо по горизонталі */
+    padding: 2rem;
+    overflow-y: auto; /* Скрол працює тут */
+    width: 100%;
+    height: 100%;
+    position: relative;
+    z-index: 1;
+}
+
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 40px 50px;
+    /* Тіні */
+    box-shadow: 0 10px 30px -5px rgba(0, 20, 60, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+    width: 95%;
+    max-width: 1400px;
+    margin-bottom: 2rem;
+    /* ЗМІНА: Дозволяємо картці рости */
+    height: auto !important;
+    flex-shrink: 0; /* Не дозволяємо стискатися */
+
+    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- ТИПОГРАФІКА --- */
+.glass-card h1, .glass-card h2, .glass-card h3 {
+    color: var(--primary-color) !important;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+}
+
+.glass-card p, .glass-card li, .glass-card span {
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.glass-card label {
+    color: var(--text-main);
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+/* --- ЕЛЕМЕНТИ ФОРМ --- */
+.rz-textbox, .rz-password, .rz-dropdown, .rz-textarea {
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 10px !important;
+    padding: 10px 12px;
+    color: var(--text-main) !important;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+    .rz-textbox:focus, .rz-password:focus {
+        border-color: var(--primary-color) !important;
+        box-shadow: 0 0 0 3px rgba(0, 33, 113, 0.15) !important;
+    }
+
+/* --- КНОПКИ --- */
+.btn-primary-custom {
+    background-color: var(--primary-color) !important;
+    color: white !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    padding: 8px 20px !important;
+    border: none !important;
+    box-shadow: 0 4px 10px rgba(0, 33, 113, 0.2);
+    transition: transform 0.1s, box-shadow 0.2s;
+}
+
+    .btn-primary-custom:hover {
+        background-color: var(--primary-light) !important;
+        box-shadow: 0 6px 15px rgba(0, 33, 113, 0.3);
+    }
+
+    .btn-primary-custom:active {
+        transform: scale(0.97);
+    }
+
+.loading-spinner {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+/* --- DATA GRID (GLASS STYLE) --- */
+.glass-grid.rz-datagrid {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.glass-grid .rz-grid-table {
+    border-collapse: collapse !important;
+}
+
+    .glass-grid .rz-grid-table thead th {
+        background-color: rgba(255, 255, 255, 0.3) !important;
+        border-bottom: 1px solid rgba(0, 33, 113, 0.1) !important;
+        color: var(--primary-color) !important;
+        font-weight: 600;
+        font-family: 'Inter', sans-serif;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        padding: 16px !important;
+    }
+
+    .glass-grid .rz-grid-table tr td {
+        background-color: transparent !important;
+        border-bottom: 1px solid rgba(0, 33, 113, 0.05) !important;
+        color: var(--text-secondary);
+        padding: 16px !important;
+        font-size: 0.95rem;
+    }
+
+.glass-grid .rz-data-row:hover td {
+    background-color: rgba(255, 255, 255, 0.6) !important;
+    color: var(--primary-color) !important;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.glass-grid .rz-column-title {
+    color: inherit !important;
+}
+
+.glass-grid .rz-cell-data {
+    color: inherit !important;
+}
+/* Стилі для Header */
+.classroom-header {
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    padding-bottom: 30px;
+    margin-bottom: 30px;
+}
+
+.class-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0, 33, 113, 0.2);
+}
+
+.meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background-color: rgba(255,255,255,0.6);
+    border: 1px solid rgba(0,0,0,0.05);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Картка запрошення */
+.invite-card {
+    background: white;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+.invite-label {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.code-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+    .code-display:hover {
+        background-color: rgba(0,0,0,0.03);
+    }
+
+.code-text {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    letter-spacing: 1px;
+}
+
+/* Панель викладача */
+.teacher-toolbar {
+    background-color: rgba(255,255,255,0.5);
+    border: 1px dashed var(--primary-light);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+}
+
+/* Вкладки */
+.tab-content-wrapper {
+    padding: 20px 0;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.content-placeholder {
+    padding: 40px;
+    text-align: center;
+    border: 2px dashed rgba(0,0,0,0.1);
+    border-radius: 12px;
+    color: var(--text-muted);
+}
+
+/* Перевизначення стилів RadzenTabs, щоб прибрати рамки */
+.rz-tabview-nav {
+    background: transparent !important;
+    border: none !important;
+}
+
+.rz-tabview-panels {
+    background: transparent !important;
+    border: none !important;
+}
+
+
+
+/* Стилі для порожнього стану */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: rgba(255,255,255,0.4);
+    border: 2px dashed rgba(0,0,0,0.1);
+    border-radius: 20px;
+    color: var(--text-secondary);
+}
+
+/* --- КАРТКА КЛАСУ (Google Classroom Style) --- */
+.classroom-card {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.08);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+    .classroom-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+
+/* Верхня кольорова частина */
+.card-header-bg {
+    height: 100px;
+    padding: 16px;
+    color: white;
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Градієнти для карток (рандомно призначаються) */
+.grad-1 {
+    background: linear-gradient(135deg, #002171, #42a5f5);
+}
+
+.grad-2 {
+    background: linear-gradient(135deg, #00695c, #4db6ac);
+}
+
+.grad-3 {
+    background: linear-gradient(135deg, #ad1457, #f06292);
+}
+
+.grad-4 {
+    background: linear-gradient(135deg, #4527a0, #7e57c2);
+}
+
+.grad-5 {
+    background: linear-gradient(135deg, #ef6c00, #ffb74d);
+}
+
+.card-header-content {
+    flex: 1;
+    overflow: hidden;
+}
+
+    .card-header-content h4 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 1.3rem;
+    }
+
+.card-body {
+    padding: 16px;
+    flex: 1;
+    position: relative;
+}
+
+.card-footer {
+    padding: 12px 16px;
+    border-top: 1px solid rgba(0,0,0,0.05);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Бейджі ролей */
+.role-badge {
+    position: absolute;
+    top: -12px;
+    right: 16px;
+}
+
+.badge-teacher {
+    background: var(--primary-color);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.badge-student {
+    background: white;
+    color: var(--text-secondary);
+    border: 1px solid #cbd5e1;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Прибираємо стандартні стилі вкладок Radzen */
+.rz-tabview-nav {
+    background: transparent !important;
+    border: none !important;
+}
+
+.rz-tabview-panels {
+    background: transparent !important;
+    border: none !important;
+}
+
+.rz-tabview-nav li.rz-tabview-selected a {
+    background-color: rgba(255,255,255,0.5) !important;
+    color: var(--primary-color) !important;
+    font-weight: 700 !important;
+}
+/* --- МОБІЛЬНА АДАПТАЦІЯ --- */
+@media (max-width: 768px) {
+    .glass-card {
+        padding: 24px;
+        border-radius: 16px;
+    }
+
+    .layout-content-center {
+        padding: 1rem;
+    }
+
+    .custom-header {
+        height: 60px;
+        padding: 0 10px !important;
+    }
+
+    .glass-card h1 {
+        font-size: 1.75rem;
+    }
+
+    .glass-card h2 {
+        font-size: 1.5rem;
+    }
+}
+
+
+/*Сторінка 404 дизайн*/
+/* Центрування контейнера всередині скляної картки */
+.not-found-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh; /* Висота для центрування */
+    width: 100%;
+    padding: 20px;
+}
+
+/* Стилі для арт-об'єкта */
+.error-art {
+    position: relative;
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+/* Величезний текст 404 на фоні */
+.error-bg-text {
+    font-size: 10rem;
+    font-weight: 900;
+    line-height: 1;
+    background: linear-gradient(180deg, rgba(0, 33, 113, 0.08) 0%, rgba(0, 33, 113, 0) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    user-select: none;
+    z-index: 0;
+}
+
+/* Коло з іконкою */
+.error-icon-circle {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 25px rgba(0, 33, 113, 0.25);
+    z-index: 1;
+    animation: float 3s ease-in-out infinite;
+}
+
+
+
+/* --- СТИЛІ ДЛЯ ФОРМАТОВАНОГО HTML-КОНТЕНТУ (Rich Text) --- */
+.rich-content-display {
+    line-height: 1.7;
+    color: var(--text-secondary); /* Основний колір тексту */
+    font-size: 1rem;
+    padding: 10px;
+}
+
+    .rich-content-display h1, .rich-content-display h2, .rich-content-display h3 {
+        color: var(--primary-color);
+        font-weight: 700;
+        margin-top: 1.5rem;
+        margin-bottom: 0.8rem;
+        letter-spacing: -0.01em;
+    }
+
+    .rich-content-display p {
+        margin-bottom: 1rem;
+    }
+
+    .rich-content-display ul, .rich-content-display ol {
+        padding-left: 25px;
+        margin-bottom: 1rem;
+        color: var(--text-main);
+    }
+
+    .rich-content-display pre {
+        background-color: #f1f5f9; /* Світло-сірий для блоків коду */
+        border: 1px solid #e2e8f0;
+        padding: 15px;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-family: monospace;
+        font-size: 0.9rem;
+    }
+    /*CТИЛІ СТОРІНКИ HOME*/
+/* Стилі, що не були в app.css, але потрібні тут */
+.feature-card {
+    background: rgba(255,255,255,0.5);
+    padding: 24px;
+    border-radius: 16px;
+    text-align: center;
+    height: 100%;
+    transition: transform 0.2s;
+    border: 1px solid rgba(255,255,255,0.6);
+}
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        background: rgba(255,255,255,0.8);
+    }
+
+    .feature-card .rz-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        background: rgba(0, 33, 113, 0.05);
+        padding: 15px;
+        border-radius: 50%;
+    }
+
+    .feature-card h4 {
+        color: var(--text-main);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px rgba(0,0,0,0.05);
+    }
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-main);
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.action-banner {
+    background: linear-gradient(90deg, #f8fafc 0%, #eef2ff 100%);
+    border-radius: 16px;
+    padding: 30px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 8px rgba(0, 33, 113, 0.05);
+}
+/* Стилі для секції FAQ */
+.faq-accordion {
+    border-radius: 12px !important;
+    overflow: hidden;
+    border: 1px solid rgba(0, 33, 113, 0.05);
+    box-shadow: 0 5px 15px rgba(0, 33, 113, 0.05);
+    background: rgba(255, 255, 255, 0.7);
+}
+
+    .faq-accordion .rz-accordion-item-header {
+        background: transparent !important;
+        border-bottom: 1px solid rgba(0, 33, 113, 0.05);
+        color: var(--text-main);
+        font-weight: 600;
+        padding: 15px 20px;
+    }
+
+    .faq-accordion .rz-accordion-item-content {
+        padding: 15px 20px;
+        background: rgba(255, 255, 255, 0.9);
+        color: var(--text-secondary);
+    }
+
+/* Стилі для карток контактів */
+.contact-card {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 33, 113, 0.05);
+    border-radius: 12px;
+    padding: 25px;
+    height: 100%;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+}
+
+.support-hero {
+    padding: 40px 0;
+}
+
+/* Стилі для поля пошуку */
+.rz-textbox[readonly] {
+    cursor: default !important;
+}
+/* Легка анімація левітації */
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+.floating-chat-container {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.floating-chat-button {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    color: white;
+    transition: transform 0.2s;
+}
+
+    .floating-chat-button:hover {
+        transform: scale(1.05);
+    }
+
+.chat-sidebar-panel {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 350px;
+    height: 450px;
+    background: var(--glass-bg);
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    display: flex;
+    flex-direction: column;
+    /* Анімація */
+    transform: translate(100%, 0); /* Ховаємо праворуч */
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.3s;
+}
+
+    .chat-sidebar-panel.open {
+        transform: translate(0, -65px); /* Зсуваємо вгору, щоб не перекрити кнопку */
+        opacity: 1;
+    }
+
+/* Адаптивність для мобільних: робимо чат на весь екран */
+@media (max-width: 600px) {
+    .chat-sidebar-panel {
+        width: 100vw;
+        height: 100vh;
+        bottom: 0;
+        right: 0;
+        top: 0;
+        left: 0;
+        border-radius: 0;
+        transform: translate(100%, 0);
+    }
+
+        .chat-sidebar-panel.open {
+            transform: translate(0, 0);
+        }
+
+    .floating-chat-container {
+        bottom: 10px;
+        right: 10px;
+    }
+}
+
+/* --- СТИЛІ RADZEN TABS (для ClassroomsDetails) --- */
+.glass-tabs {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+    .glass-tabs .rz-tabview-nav {
+        background: transparent !important;
+        border-bottom: 1px solid rgba(0, 33, 113, 0.1) !important;
+        margin-bottom: 20px;
+    }
+
+    .glass-tabs .rz-tabview-panels {
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+    }
+
+.tab-content-wrapper {
+    padding: 10px 0;
+}
+
+.content-placeholder {
+    padding: 40px;
+    text-align: center;
+    border: 2px dashed rgba(0,0,0,0.1);
+    border-radius: 12px;
+    color: var(--text-muted);
+}
+
+.meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background-color: rgba(255,255,255,0.6);
+    border: 1px solid rgba(0,0,0,0.05);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.class-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0, 33, 113, 0.2);
+}
+
+.teacher-toolbar {
+    background-color: rgba(255,255,255,0.5);
+    border: 1px dashed var(--primary-light);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
 }

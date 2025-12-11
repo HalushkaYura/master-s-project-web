@@ -1,0 +1,219 @@
+﻿@page "/userInfo"
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using SmartClass.Application.Contracts.Auth
+@using SmartClass.Application.Contracts.User
+@using SmartClass.Web.Services
+@using System.Globalization
+
+@inject CurrentUserState CurrentUser
+@inject NavigationManager NavigationManager
+@inject Radzen.DialogService DialogService
+<!-- Локальні стилі для дрібних деталей профілю -->
+<style>
+    .profile-avatar-wrapper {
+        position: relative;
+        width: 100px;
+        height: 100px;
+        box-shadow: 0 4px 15px rgba(0, 33, 113, 0.15);
+        border-radius: 50%;
+        border: 3px solid #fff;
+    }
+
+    .edit-avatar-btn {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        background-color: var(--primary-color);
+        color: white;
+        border: 2px solid white;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+        .edit-avatar-btn:hover {
+            transform: scale(1.1);
+            background-color: var(--primary-light);
+        }
+
+        .edit-avatar-btn .rz-icon {
+            font-size: 16px;
+        }
+
+    .info-item {
+        background-color: rgba(255,255,255,0.5);
+        padding: 16px;
+        border-radius: 12px;
+        border: 1px solid rgba(0,0,0,0.03);
+    }
+
+        .info-item label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .info-item span {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+</style>
+
+
+<PageTitle>Мій профіль</PageTitle>
+
+<div class="animate-fade-in">
+
+    <!-- Заголовок сторінки -->
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Style="margin-bottom: 20px;">
+        <RadzenIcon Icon="badge" Style="color: var(--primary-color); font-size: 2rem;" />
+        <h2 style="margin: 0; color: var(--primary-color); font-weight: 700;">Мій профіль</h2>
+    </RadzenStack>
+
+    @if (userInfo != null)
+    {
+        <!-- Основна інформація -->
+        <RadzenStack Gap="2rem">
+
+            <!-- Секція 1: Аватар та Ім'я -->
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 24px; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 24px;">
+
+                <!-- Аватар з тінню -->
+                <div class="profile-avatar-wrapper">
+                    <RadzenImage Path="/avatars/avatar.png" Style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;" />
+                    <!-- Кнопка зміни фото (декоративна поки що) -->
+                    <button class="edit-avatar-btn" title="Змінити фото">
+                        <RadzenIcon Icon="camera_alt" />
+                    </button>
+                </div>
+
+                <!-- Текстова частина -->
+                <div style="flex: 1;">
+                    <h3 style="margin: 0; font-size: 1.75rem; font-weight: 800; color: var(--text-main);">
+                        @userInfo.Firstname @userInfo.Lastname
+                    </h3>
+                    <p style="margin: 4px 0 12px 0; color: var(--text-muted);">
+                        @userInfo.Email
+                    </p>
+
+                    <!-- Ролі -->
+                    @if (userInfo.Roles != null && userInfo.Roles.Any())
+                    {
+                        <RadzenStack Orientation="Orientation.Horizontal" Gap="8px">
+                            @foreach (var role in userInfo.Roles)
+                            {
+                                var isTeacher = role.Contains("Teacher", StringComparison.OrdinalIgnoreCase);
+                                <RadzenBadge Text="@role"
+                                             BadgeStyle="@(isTeacher ? BadgeStyle.Primary : BadgeStyle.Light)"
+                                             IsPill="true"
+                                             Style="@(isTeacher ? "background-color: var(--primary-color);" : "color: var(--text-secondary); border: 1px solid #cbd5e1;")" />
+                            }
+                        </RadzenStack>
+                    }
+                </div>
+
+                <!-- Кнопка редагування (справа на великих екранах) -->
+                <div>
+                    <RadzenButton Text="Редагувати" Icon="edit" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Secondary" Style="border-radius: 8px; color: var(--text-secondary); border-color: #cbd5e1;" />
+                </div>
+            </div>
+
+            <!-- Секція 2: Детальна інформація -->
+            <div>
+                <h4 style="color: var(--primary-color); margin-bottom: 16px; font-weight: 600;">Особисті дані</h4>
+
+                <RadzenRow RowGap="1.5rem">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <div class="info-item">
+                            <label>Ім'я</label>
+                            <span>@userInfo.Firstname</span>
+                        </div>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <div class="info-item">
+                            <label>Прізвище</label>
+                            <span>@userInfo.Lastname</span>
+                        </div>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <div class="info-item">
+                            <label>Дата народження</label>
+                            @if (userInfo.BirthDate != DateTime.MinValue)
+                            {
+                                <span style="display: flex; align-items: center; gap: 8px;">
+                                    <RadzenIcon Icon="cake" Style="font-size: 1.2rem; color: var(--text-muted);" />
+                                    @userInfo.BirthDate.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("uk-UA"))
+                                </span>
+                            }
+                            else
+                            {
+                                <span style="color: var(--text-muted); font-style: italic;">Не вказано</span>
+                            }
+                        </div>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <div class="info-item">
+                            <label>Електронна пошта</label>
+                            <span style="display: flex; align-items: center; gap: 8px;">
+                                <RadzenIcon Icon="email" Style="font-size: 1.2rem; color: var(--text-muted);" />
+                                @userInfo.Email
+                            </span>
+                        </div>
+                    </RadzenColumn>
+                </RadzenRow>
+            </div>
+
+            <!-- Секція 3: Дії -->
+            <div style="border-top: 1px solid rgba(0,0,0,0.05); padding-top: 24px; margin-top: 10px;">
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" Wrap="FlexWrap.Wrap">
+                    <RadzenButton Text="Мої завдання" Icon="task" Class="btn-primary-custom" Click="@NavigateToTasksPage" />
+                    <RadzenButton Text="Змінити пароль" Icon="lock_reset" Variant="Variant.Text" ButtonStyle="ButtonStyle.Primary" Style="color: var(--primary-color);" />
+                </RadzenStack>
+            </div>
+
+        </RadzenStack>
+    }
+    else
+    {
+        <!-- Стан, коли користувач не залогінений -->
+        <div style="text-align: center; padding: 60px 20px;">
+            <div style="background-color: rgba(255, 0, 0, 0.05); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto;">
+                <RadzenIcon Icon="no_accounts" Style="font-size: 40px; color: #ef4444;" />
+            </div>
+            <h3 style="color: var(--text-main); margin-bottom: 10px;">Ви не авторизовані</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 30px;">Будь ласка, увійдіть у систему, щоб переглянути свій профіль.</p>
+            <RadzenButton Text="Увійти в акаунт" Icon="login" Class="btn-primary-custom" Click="@NavigateToLogin" />
+        </div>
+    }
+</div>
+
+@code {
+    private UserInfoDTO? userInfo;
+
+    protected override void OnInitialized()
+    {
+        userInfo = CurrentUser.User;
+    }
+
+    private void NavigateToTasksPage()
+    {
+        NavigationManager.NavigateTo("/tasks");
+    }
+
+    private void NavigateToLogin()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+}

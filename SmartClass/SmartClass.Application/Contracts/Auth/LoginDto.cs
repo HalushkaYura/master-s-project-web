@@ -1,5 +1,8 @@
 ﻿namespace SmartClass.Application.Contracts.Auth
 {
-    public record LoginDto(string Email, string Password);
-
+    public class LoginDto
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
 }

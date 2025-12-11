@@ -1,0 +1,436 @@
+﻿@page "/classrooms/{ClassroomId:guid}"
+@layout MainLayout
+
+@using SmartClass.Application.Abstractions
+@using SmartClass.Application.Contracts.Classrooms
+@using SmartClass.Web.Components.Pages.Classrooms.Tabs
+@using SmartClass.Web.Components.Shared
+@using SmartClass.Web.Services
+@using Radzen
+@using SmartClass.Web.Components.Pages.Materials
+@using SmartClass.Web.Components.Pages.Assignments
+
+@inject IClassroomService ClassroomService
+@inject CurrentUserState CurrentUser
+@inject NavigationManager Nav
+@inject Radzen.NotificationService Toast
+@inject IJSRuntime JS
+@inject Radzen.DialogService DialogService
+
+<PageTitle>@(details is null ? "Клас" : details.Title)</PageTitle>
+
+<div class="animate-fade-in">
+
+    @if (isLoading)
+    {
+        <div style="display: flex; justify-content: center; align-items: center; height: 300px;">
+            <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate"
+                                       Size="ProgressBarCircularSize.Medium"
+                                       Style="color: var(--primary-color);" />
+        </div>
+    }
+    else if (!IsAuthenticated)
+    {
+        <RadzenAlert Severity="AlertSeverity.Warning"
+                     Variant="Variant.Flat"
+                     Shade="Shade.Light"
+                     Style="border-radius: 12px; border: 1px solid #fcd34d;">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+                <RadzenIcon Icon="lock" />
+                <span>Ви повинні увійти в систему, щоб переглянути деталі класу.</span>
+            </RadzenStack>
+        </RadzenAlert>
+    }
+    else if (error != null)
+    {
+        <RadzenAlert Severity="AlertSeverity.Error"
+                     Variant="Variant.Flat"
+                     Shade="Shade.Lighter"
+                     Style="border-radius: 12px;">
+            @error
+        </RadzenAlert>
+    }
+    else if (details != null)
+    {
+        <div class="classroom-header">
+            <RadzenStack Orientation="Orientation.Horizontal"
+                         JustifyContent="JustifyContent.SpaceBetween"
+                         AlignItems="AlignItems.Start"
+                         Wrap="FlexWrap.Wrap"
+                         Gap="20px">
+
+                <div style="flex: 1; min-width: 300px;">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="10px">
+                        <div class="class-icon-wrapper">
+                            <RadzenIcon Icon="school" Style="font-size: 2rem; color: white;" />
+                        </div>
+                        <div>
+                            <h1 style="margin: 0; color: var(--primary-color); font-weight: 800; font-size: 2rem; line-height: 1.2;">
+                                @details.Title
+                            </h1>
+                            <span style="color: var(--text-muted); font-size: 1rem; font-weight: 500;">
+                                @details.Section
+                            </span>
+                        </div>
+                    </RadzenStack>
+
+                    <div style="margin-top: 15px; display: flex; align-items: center; gap: 15px;">
+                        <div class="meta-pill">
+                            <RadzenIcon Icon="person" Style="font-size: 1rem;" />
+                            <span>@details.OwnerName</span>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(details.Description))
+                    {
+                        <p style="margin-top: 15px; color: var(--text-secondary); line-height: 1.6;">
+                            @details.Description
+                        </p>
+                    }
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 15px; align-items: flex-end;">
+                    @if (!IsTeacher)
+                    {
+                        <RadzenButton Text="Мої оцінки"
+                                      Icon="grading"
+                                      ButtonStyle="ButtonStyle.Primary"
+                                      Variant="Variant.Flat"
+                                      class="btn-primary-custom"
+                                      Click="@(() => Nav.NavigateTo($"/classrooms/{ClassroomId}/my-grades"))" />
+                    }
+
+                    <div class="invite-card">
+                        <span class="invite-label">Код приєднання</span>
+                        <div class="code-display"
+                             @onclick="CopyInviteLink"
+                             title="Натисніть, щоб скопіювати посилання">
+                            <span class="code-text">@details.JoinCode</span>
+                            <RadzenIcon Icon="content_copy"
+                                        Style="font-size: 1.2rem; color: var(--primary-color);" />
+                        </div>
+                    </div>
+                </div>
+            </RadzenStack>
+        </div>
+
+        @if (IsTeacher)
+        {
+            <div class="teacher-toolbar">
+                <RadzenText Text="ПАНЕЛЬ ВИКЛАДАЧА"
+                            TextStyle="TextStyle.Caption"
+                            Style="color: var(--text-muted); font-weight: 700; margin-bottom: 10px; display: block;" />
+
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="10px" Wrap="FlexWrap.Wrap">
+                    <RadzenButton Text="Нове завдання"
+                                  Icon="add_task"
+                                  ButtonStyle="ButtonStyle.Primary"
+                                  class="btn-primary-custom"
+                                  Click="@OpenCreateAssignmentDialog" />
+
+                    <RadzenButton Text="Додати матеріал"
+                                  Icon="library_add"
+                                  ButtonStyle="ButtonStyle.Secondary"
+                                  Variant="Variant.Outlined"
+                                  Style="border-radius: 10px; font-weight: 600;"
+                                  Click="@OpenCreateMaterialDialog" />
+
+                    <div style="flex: 1;"></div>
+
+                    <RadzenButton Text="Редагувати клас"
+                                  Icon="edit"
+                                  ButtonStyle="ButtonStyle.Warning"
+                                  Variant="Variant.Text"
+                                  Style="color: var(--text-secondary); font-weight: 600;" />
+
+                    <RadzenButton Text="Видалити клас"
+                                  Icon="delete"
+                                  Variant="Variant.Text"
+                                  ButtonStyle="ButtonStyle.Danger"
+                                  Style="color: #ef4444; font-weight: 600;"
+                                  Click="OpenDeleteClassDialog" />
+                </RadzenStack>
+            </div>
+        }
+
+        <RadzenTabs RenderMode="TabRenderMode.Client"
+                    Class="glass-tabs">
+            @* Використовуємо кастомний клас для прибирання рамок *@
+            <Tabs>
+                <RadzenTabsItem Text="Огляд" Icon="dashboard">
+                    <div class="tab-content-wrapper">
+                        <RadzenRow Gap="1rem">
+                            <RadzenColumn Size="12" SizeMD="8">
+                                <div class="content-placeholder">
+                                    <RadzenIcon Icon="campaign"
+                                                Style="font-size: 3rem; color: var(--accent-color); opacity: 0.5; margin-bottom: 10px;" />
+                                    <p>Стрічка новин та оголошень класу буде тут.</p>
+                                </div>
+                            </RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="4">
+                                <div class="content-placeholder">
+                                    <RadzenIcon Icon="event"
+                                                Style="font-size: 3rem; color: var(--primary-light); opacity: 0.5; margin-bottom: 10px;" />
+                                    <p>Найближчі події та дедлайни.</p>
+                                </div>
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </div>
+                </RadzenTabsItem>
+
+                <RadzenTabsItem Text="Учасники" Icon="groups">
+                    <div class="tab-content-wrapper">
+                        <RadzenDataGrid Data="@details.Members"
+                                        TItem="ClassroomMemberDto"
+                                        Class="glass-grid"
+                                        AllowSorting="true">
+                            <Columns>
+                                <RadzenDataGridColumn TItem="ClassroomMemberDto"
+                                                      Property="FullName"
+                                                      Title="Ім'я">
+                                    <Template Context="row">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <div style="width: 32px; height: 32px; background: rgba(0,33,113,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--primary-color); font-weight: 700; font-size: 0.8rem;">
+                                                @row.FullName.Substring(0, 1)
+                                            </div>
+                                            <span style="font-weight: 600; color: var(--text-main);">
+                                                @row.FullName
+                                            </span>
+                                        </div>
+                                    </Template>
+                                </RadzenDataGridColumn>
+
+                                <RadzenDataGridColumn TItem="ClassroomMemberDto"
+                                                      Property="Email"
+                                                      Title="Email" />
+
+                                <RadzenDataGridColumn TItem="ClassroomMemberDto"
+                                                      Property="RoleInClass"
+                                                      Title="Роль">
+                                    <Template Context="row">
+                                        @if (row.RoleInClass == "Teacher")
+                                        {
+                                            <RadzenBadge Text="Викладач"
+                                                         BadgeStyle="BadgeStyle.Primary"
+                                                         IsPill="true"
+                                                         Style="background-color: var(--primary-light);" />
+                                        }
+                                        else
+                                        {
+                                            <RadzenBadge Text="Студент"
+                                                         BadgeStyle="BadgeStyle.Light"
+                                                         IsPill="true"
+                                                         Style="color: var(--text-secondary); border: 1px solid #cbd5e1;" />
+                                        }
+                                    </Template>
+                                </RadzenDataGridColumn>
+                            </Columns>
+                        </RadzenDataGrid>
+                    </div>
+                </RadzenTabsItem>
+
+                <RadzenTabsItem Text="Матеріали" Icon="library_books">
+                    <div class="tab-content-wrapper">
+                        <ClassroomMaterialsTab @ref="materialsTab"
+                                               ClassroomId="ClassroomId"
+                                               IsTeacher="IsTeacher" />
+                    </div>
+                </RadzenTabsItem>
+
+                <RadzenTabsItem Text="Завдання" Icon="assignment">
+                    <div class="tab-content-wrapper">
+                        <ClassroomAssignmentsTab @ref="assignmentsTab"
+                                                 ClassroomId="ClassroomId"
+                                                 IsTeacher="IsTeacher" />
+                    </div>
+                </RadzenTabsItem>
+
+                @if (IsTeacher)
+                {
+                    <RadzenTabsItem Text="Журнал оцінок" Icon="table_chart">
+                        <RadzenButton Text="Відкрити журнал"
+                                      Icon="open_in_new"
+                                      class="btn-primary-custom"
+                                      Click="@(() => Nav.NavigateTo($"/classrooms/{ClassroomId}/gradebook"))" />
+                    </RadzenTabsItem>
+                }
+            </Tabs>
+        </RadzenTabs>
+    }
+</div>
+
+
+@code {
+    [Parameter] public Guid ClassroomId { get; set; }
+
+    private ClassroomDetailsDto? details;
+    private bool isLoading = true;
+    private string? error;
+    private bool isChatOpen = false; // Стан для відкриття/закриття чату
+    // 🔹 посилання на дочірні компоненти-таби
+    private ClassroomMaterialsTab? materialsTab;
+    private ClassroomAssignmentsTab? assignmentsTab;
+
+    private bool IsAuthenticated => CurrentUser.User != null;
+
+    private bool IsTeacher =>
+        CurrentUser.User?.Roles?.Any(r =>
+            string.Equals(r, "teacher", StringComparison.OrdinalIgnoreCase) ||
+            r.Contains("викладач", StringComparison.OrdinalIgnoreCase)
+        ) == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        error = null;
+
+        try
+        {
+            if (CurrentUser.User is null)
+            {
+                isLoading = false;
+                return;
+            }
+
+            var userIdStr = CurrentUser.User.UserId;
+            if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                error = "Invalid user id.";
+                return;
+            }
+
+            // ⚠️ Тут потрібно забезпечити, що ClassroomService.GetClassroomDetailsAsync
+            // використовує HttpClient з Bearer токеном, інакше отримаєте 401.
+            details = await ClassroomService
+                .GetClassroomDetailsAsync(ClassroomId, userId, CancellationToken.None);
+
+            if (details == null)
+            {
+                error = "Клас не знайдено або ви не є його учасником.";
+            }
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string InviteUrl =>
+        details == null
+            ? string.Empty
+            : $"{Nav.BaseUri.TrimEnd('/')}/join/{details.JoinCode}";
+
+    private async Task CopyInviteLink()
+    {
+        if (string.IsNullOrEmpty(InviteUrl))
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", InviteUrl);
+
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Посилання скопійовано",
+                Detail = "Надішліть його студентам",
+                Duration = 3000
+            });
+        }
+        catch (Exception ex)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Помилка копіювання",
+                Detail = ex.Message,
+                Duration = 4000
+            });
+        }
+    }
+
+    private async Task OpenCreateMaterialDialog()
+    {
+        var result = await DialogService.OpenAsync<MaterialCreateDialog>(
+            "Новий навчальний матеріал",
+            new Dictionary<string, object> { ["ClassroomId"] = ClassroomId },
+            new DialogOptions
+            {
+                Width = "600px",
+                Resizable = true,
+                Draggable = true
+            });
+
+        if (result is bool ok && ok && materialsTab is not null)
+        {
+            await materialsTab.ReloadAsync();
+        }
+    }
+
+    private async Task OpenCreateAssignmentDialog()
+    {
+        var result = await DialogService.OpenAsync<AssignmentCreateDialog>(
+            "Нове завдання",
+            new Dictionary<string, object> { ["ClassroomId"] = ClassroomId },
+            new DialogOptions
+            {
+                Width = "600px",
+                Resizable = true,
+                Draggable = true
+            });
+
+        if (result is bool ok && ok && assignmentsTab is not null)
+        {
+            await assignmentsTab.ReloadAsync();
+        }
+    }
+
+    private async Task OpenDeleteClassDialog()
+    {
+        var result = await DialogService.OpenAsync<ConfirmDeleteDialog>(
+            "Видалення класу",
+            new Dictionary<string, object>
+            {
+                { "Title", "Видалити цей клас?" },
+                { "Message", "Це видалить усі матеріали, завдання, оцінки та чат. Дія незворотна." },
+                { "Description", $"Видалення класу '{details!.Title}' неможливо скасувати." }
+            },
+            new DialogOptions() { Width = "450px", CssClass = "custom-dialog" });
+
+        if (result is true)
+        {
+            // TODO: Реалізувати ClassroomService.DeleteAsync
+            Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "TODO", Detail = "Видалення класу успішно підтверджено." });
+            Nav.NavigateTo($"/classrooms");
+        }
+    }
+}
+
+
+@* Цей блок розташовано поза основним контентом (div.animate-fade-in),
+   щоб position: fixed працював відносно вікна браузера, а не прокручуваного контейнера.
+   Він знаходиться тут, оскільки йому потрібен ClassroomId. *@
+<div class="floating-chat-container">
+    @if (IsAuthenticated)
+    {
+        <RadzenButton Icon="forum"
+                      Class="floating-chat-button"
+                      Click="@(() => isChatOpen = !isChatOpen)"
+                      Style="background-color: var(--accent-color) !important; box-shadow: 0 4px 10px rgba(66, 165, 245, 0.4);" />
+
+        <div class="chat-sidebar-panel @(isChatOpen ? "open" : "")">
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center" Style="padding: 10px; border-bottom: 1px solid rgba(0,0,0,0.1);">
+                <span style="font-weight: 700; color: var(--primary-color);">Чат класу</span>
+                <RadzenButton Icon="close" Variant="Variant.Text" ButtonStyle="ButtonStyle.Secondary" Click="@(() => isChatOpen = false)" />
+            </RadzenStack>
+
+            <div style="flex: 1; overflow: hidden; padding: 10px;">
+                <ClassroomChatPanel ClassroomId="ClassroomId" />
+            </div>
+        </div>
+    }
+</div>

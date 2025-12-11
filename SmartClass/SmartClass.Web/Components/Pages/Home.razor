@@ -1,7 +1,188 @@
 ﻿@page "/"
+@using SmartClass.Web.Components.Layout
+@using SmartClass.Web.Components.Pages.Classrooms
+@using SmartClass.Web.Services
+@using Radzen
+@using Radzen.Blazor
+@inject CurrentUserState CurrentUser
+@inject NavigationManager Nav
+@inject Radzen.DialogService DialogService
+@implements IDisposable
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Smart Class - Головна</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="animate-fade-in">
 
-Welcome to your new app.
+@if (CurrentUser.User is null)
+{
+    <!-- === РЕЖИМ ГОСТЯ: ЛЕНДІНГ === -->
+    <div style="text-align: center; margin-bottom: 3rem;">
+        <h1 style="font-size: 3rem; font-weight: 800; color: var(--primary-color); margin-bottom: 1rem; line-height: 1.2;">
+            Навчання без кордонів <br />
+            <span style="color: var(--accent-color);">Організація без хаосу</span>
+        </h1>
+        <p style="font-size: 1.1rem; color: var(--text-secondary); max-width: 600px; margin: 0 auto 2rem auto;">
+            Smart Class — це сучасна платформа для викладачів та студентів. 
+            Створюйте класи, діліться матеріалами та спілкуйтеся в реальному часі.
+        </p>
+
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="1rem">
+            <RadzenButton Text="Почати навчання" class="btn-primary-custom" Style="padding: 12px 32px; font-size: 1.1rem;" Click="@(() => Nav.NavigateTo("/register"))" />
+            <RadzenButton Text="Увійти" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Primary" Style="padding: 12px 32px; border-radius: 10px; font-weight: 600;" Click="@(() => Nav.NavigateTo("/login"))" />
+        </RadzenStack>
+    </div>
+
+    <!-- Features Grid (перенесено з внутрішніх стилів в app.css, але тут для відображення) -->
+    <RadzenRow Gap="2rem">
+        <RadzenColumn Size="12" SizeMD="4">
+            <div class="feature-card">
+                <RadzenIcon Icon="speed" Style="color: var(--primary-color);" />
+                <h4>Швидкість</h4>
+                <p>Миттєве завантаження сторінок та оновлення даних у реальному часі завдяки технології Blazor.</p>
+            </div>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4">
+            <div class="feature-card">
+                <RadzenIcon Icon="security" Style="color: var(--primary-color);" />
+                <h4>Безпека</h4>
+                <p>Ваші дані захищені сучасними протоколами шифрування. Тільки учасники класу мають доступ до матеріалів.</p>
+            </div>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4">
+            <div class="feature-card">
+                <RadzenIcon Icon="devices" Style="color: var(--primary-color);" />
+                <h4>Адаптивність</h4>
+                <p>Працюйте з будь-якого пристрою: ноутбука, планшета чи смартфона. Інтерфейс підлаштується під вас.</p>
+            </div>
+        </RadzenColumn>
+    </RadzenRow>
+}
+else
+{
+    <!-- === РЕЖИМ АВТОРИЗОВАНОГО: ДАШБОРД === -->
+    <div class="animate-fade-in">
+        
+        <!-- Welcome Header -->
+        <div style="margin-bottom: 30px;">
+            <RadzenText Text="@($"Вітаємо, {CurrentUser.User?.Firstname} 👋")" 
+                        Style="color: var(--primary-color); font-size: 2rem; font-weight: 700; margin: 0;" />
+            <RadzenText Text="Ось огляд вашої активності в навчальній системі." 
+                        Style="color: var(--text-secondary);" />
+        </div>
+
+        <!-- 1. STATS CARDS -->
+        <RadzenRow Gap="1.5rem" Style="margin-bottom: 2rem;">
+            <!-- Класи -->
+            <RadzenColumn Size="12" SizeMD="4">
+                <div class="stat-card" @onclick="@(() => Nav.NavigateTo("/classrooms"))">
+                    <div class="stat-icon" style="background-color: rgba(66, 165, 245, 0.1); color: var(--accent-color);">
+                        <RadzenIcon Icon="class" />
+                    </div>
+                    <div>
+                        <span class="stat-value">N/A</span> 
+                        <span class="stat-label">Мої активні класи</span>
+                    </div>
+                </div>
+            </RadzenColumn>
+            <!-- Завдання -->
+            <RadzenColumn Size="12" SizeMD="4">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background-color: rgba(255, 152, 0, 0.1); color: #f57c00;">
+                        <RadzenIcon Icon="assignment" />
+                    </div>
+                    <div>
+                        <span class="stat-value">0</span>
+                        <span class="stat-label">@(!IsTeacher ? "Дедлайнів скоро" : "Робіт на перевірку")</span>
+                    </div>
+                </div>
+            </RadzenColumn>
+            <!-- Повідомлення -->
+            <RadzenColumn Size="12" SizeMD="4">
+                <div class="stat-card" @onclick="@(() => Nav.NavigateTo("/notifications"))">
+                    <div class="stat-icon" style="background-color: rgba(76, 175, 80, 0.1); color: #2e7d32;">
+                        <RadzenIcon Icon="notifications_active" />
+                    </div>
+                    <div>
+                        <span class="stat-value">0</span>
+                        <span class="stat-label">Нові сповіщення</span>
+                    </div>
+                </div>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <!-- 2. QUICK ACTIONS & ROLE CONTEXT -->
+        <div class="action-banner">
+            <RadzenText Text="@(IsTeacher ? "Панель керування викладача" : "Швидкі дії студента")" 
+                        Style="margin: 0; color: var(--text-main); font-size: 1.25rem; font-weight: 700;" />
+            <p style="margin: 5px 0 0 0; color: var(--text-secondary); font-size: 0.95rem;">
+                @(IsTeacher ? "Створюйте новий контент або переглядайте список своїх класів." : "Приєднуйтесь до класу або перевірте завдання.")
+            </p>
+            
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="10px" Style="margin-top: 15px;">
+                @if (IsTeacher)
+                {
+                    <RadzenButton Text="Створити клас" Icon="add" class="btn-primary-custom" 
+                                  Click="@OpenCreateDialog" />
+                    <RadzenButton Text="Перевірити класи" Icon="class" ButtonStyle="ButtonStyle.Info" 
+                                  Variant="Variant.Outlined" Style="border-radius: 10px; font-weight: 600;" 
+                                  Click="@(() => Nav.NavigateTo("/classrooms"))" />
+                }
+                else
+                {
+                     <RadzenButton Text="Знайти клас" Icon="search" Class="btn-primary-custom" 
+                                   Click="@OpenJoinDialog" />
+                     <RadzenButton Text="Мої завдання" Icon="assignment" ButtonStyle="ButtonStyle.Success" 
+                                   Variant="Variant.Outlined" Style="border-radius: 10px; font-weight: 600;" 
+                                   Click="@(() => Nav.NavigateTo("/classrooms"))" />
+                }
+            </RadzenStack>
+        </div>
+
+        <!-- 3. RECENT ACTIVITY (Placeholder) -->
+        <div style="margin-top: 2rem;">
+            <RadzenText Text="Останні оновлення" TextStyle="TextStyle.H4" TagName="TagName.H3" Style="color: var(--text-main); font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;" />
+            <div style="padding: 20px; text-align: center; color: var(--text-muted); border: 2px dashed #cbd5e1; border-radius: 12px; background: white;">
+                <RadzenIcon Icon="history" Style="margin-bottom: 10px; font-size: 1.5rem;" />
+                <p style="margin: 0;">Тут з'являтимуться останні події з ваших класів (новий матеріал, оголошення, оцінки).</p>
+            </div>
+        </div>
+
+    </div>
+}
+
+</div>
+
+@code {
+
+    private bool IsTeacher =>
+        CurrentUser.User?.Roles?.Any(r =>
+            string.Equals(r, "Teacher", StringComparison.OrdinalIgnoreCase) ||
+            r.Contains("викладач", StringComparison.OrdinalIgnoreCase)
+        ) == true;
+
+    protected override void OnInitialized()
+    {
+        CurrentUser.OnChange += HandleUserStateChanged;
+    }
+
+    private void HandleUserStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        CurrentUser.OnChange -= HandleUserStateChanged;
+    }
+    
+    private async Task OpenCreateDialog()
+    {
+        // Припускаємо, що діалоги доступні через DialogService
+        await DialogService.OpenAsync<ClassroomCreateDialog>("Створення класу", null);
+    }
+
+    private async Task OpenJoinDialog()
+    {
+        await DialogService.OpenAsync<JoinClassroomDialog>("Приєднання до класу", null);
+    }
+}

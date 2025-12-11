@@ -1,11 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace SmartClass.Application.Contracts.Auth
+﻿namespace SmartClass.Application.Contracts.Auth
 {
-    public record RegisterDto(string Email, string Password, string DisplayName, string Role);
+    public class RegisterDto
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
 
+        public DateTime BirthDate { get; set; }
+
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+
+        // "Teacher" / "Student"
+        public string Role { get; set; } = "Student";
+    }
 }

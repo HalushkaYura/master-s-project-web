@@ -1,0 +1,972 @@
+﻿@page "/classrooms/{ClassroomId:guid}/gradebook"
+@layout MainLayout
+
+@using SmartClass.Application.Abstractions
+@using SmartClass.Application.Contracts.Gradebook
+@using SmartClass.Application.Contracts.Submissions
+@using SmartClass.Application.Contracts
+@using SmartClass.Web.Services
+@using SmartClass.Domain.Enums
+@using Radzen
+
+@inject IGradebookService GradebookService
+@inject ISubmissionService SubmissionService
+@inject CurrentUserState CurrentUser
+@inject NavigationManager Nav
+@inject Radzen.NotificationService Toast
+
+<PageTitle>@(gradebook is null ? "Журнал оцінок" : $"Журнал: {gradebook.ClassroomTitle}")</PageTitle>
+
+<div class="animate-fade-in">
+
+    @if (isLoading)
+    {
+        <div style="display:flex;justify-content:center;align-items:center;height:300px;">
+            <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate"
+                                       Size="ProgressBarCircularSize.Medium"
+                                       Style="color: var(--primary-color);" />
+        </div>
+    }
+    else if (!IsAuthenticated)
+    {
+        <RadzenAlert Severity="AlertSeverity.Warning" Variant="Variant.Flat">
+            Для перегляду журналу оцінок потрібно увійти в систему.
+        </RadzenAlert>
+    }
+    else if (!IsTeacher)
+    {
+        <RadzenAlert Severity="AlertSeverity.Info" Variant="Variant.Flat">
+            Журнал оцінок у повному вигляді доступний тільки викладачам.
+            <br />
+            Ви можете переглянути свої власні оцінки на сторінці
+            <RadzenLink Text="&quot;Мої оцінки&quot;"
+                        Click="@GoToMyGrades" Style="font-weight:600;" />.
+        </RadzenAlert>
+    }
+    else if (error != null)
+    {
+        <RadzenAlert Severity="AlertSeverity.Error" Variant="Variant.Flat">
+            @error
+        </RadzenAlert>
+    }
+    else if (gradebook != null)
+    {
+        <!-- HEADER -->
+        <div class="gradebook-header">
+            <div class="gradebook-header-left">
+                <div class="gradebook-icon">
+                    <RadzenIcon Icon="table_chart" />
+                </div>
+                <div>
+                    <h1 class="gradebook-title">
+                        @gradebook.ClassroomTitle
+                    </h1>
+                    <p class="gradebook-subtitle">
+                        Журнал оцінок
+                    </p>
+                    <div class="gradebook-meta">
+                        <span>
+                            <RadzenIcon Icon="groups" Style="font-size:1rem;margin-right:4px;" />
+                            Студентів: <b>@TotalStudents</b>
+                        </span>
+                        <span>
+                            <RadzenIcon Icon="assignment" Style="font-size:1rem;margin-right:4px;" />
+                            Завдань: <b>@TotalAssignments</b>
+                        </span>
+                        <span>
+                            <RadzenIcon Icon="analytics" Style="font-size:1rem;margin-right:4px;" />
+                            Середній %: <b>@(AveragePercent.HasValue ? $"{AveragePercent:F1}%" : "—")</b>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gradebook-header-right">
+                <RadzenButton Icon="arrow_back"
+                              Text="До класу"
+                              ButtonStyle="ButtonStyle.Light"
+                              Variant="Variant.Outlined"
+                              Click="@GoBackToClassroom"
+                              Style="margin-right:8px;" />
+
+                <RadzenButton Icon="file_download"
+                              Text="Експорт"
+                              ButtonStyle="ButtonStyle.Secondary"
+                              Variant="Variant.Outlined"
+                              Click="@ExportGradebook"
+                              Style="margin-right:8px;" />
+
+                <RadzenButton Icon="print"
+                              Text="Друк"
+                              ButtonStyle="ButtonStyle.Primary"
+                              Variant="Variant.Outlined"
+                              Click="@PrintGradebook" />
+            </div>
+        </div>
+
+        <!-- FILTER BAR -->
+        <div class="gradebook-filter-bar">
+            <RadzenTextBox @bind-Value="searchStudent"
+                           Placeholder="Пошук студента..."
+                           Style="width:250px;">
+                <Prefix>
+                    <RadzenIcon Icon="search" Style="margin-right:4px;" />
+                </Prefix>
+            </RadzenTextBox>
+
+            <RadzenDropDown @bind-Value="assignmentFilter"
+                            Data="@assignmentFilterOptions"
+                            TextProperty="Text"
+                            ValueProperty="Value"
+                            Style="width:220px;margin-left:12px;"
+                            Placeholder="Фільтр завдань" />
+
+            <RadzenDropDown @bind-Value="pointsMode"
+                            Data="@pointsModeOptions"
+                            TextProperty="Text"
+                            ValueProperty="Value"
+                            Style="width:180px;margin-left:12px;"
+                            Placeholder="Вид балів" />
+
+            <RadzenCheckBox @bind-Value="showOnlyActiveStudents"
+                            Style="margin-left:18px;" />
+            <span style="margin-left:4px;font-size:0.9rem;color:var(--text-secondary);">
+                Показувати тільки активних студентів
+            </span>
+
+            <RadzenCheckBox @bind-Value="editMode"
+                            Style="margin-left:auto;" />
+            <span style="margin-left:4px;font-size:0.9rem;font-weight:600;color:var(--primary-color);">
+                Режим редагування оцінок
+            </span>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <RadzenRow Gap="1.5rem">
+
+            <!-- TABLE -->
+            <RadzenColumn Size="12" SizeLG="9">
+                <div class="gradebook-table-wrapper">
+                    <RadzenDataGrid Data="@FilteredRows"
+                                    TItem="GradebookRowDto"
+                                    Class="gradebook-grid"
+                                    AllowPaging="false"
+                                    AllowSorting="false"
+                                    AllowFiltering="false">
+                        <Columns>
+                            <!-- STUDENT COLUMN -->
+                            <RadzenDataGridColumn TItem="GradebookRowDto" Title="Студент" Frozen="true" Width="220px">
+                                <Template Context="row">
+                                    <div class="student-cell">
+                                        <div class="student-avatar">
+                                            @GetInitials(row.StudentName)
+                                        </div>
+                                        <div class="student-info">
+                                            <div class="student-name">@row.StudentName</div>
+                                        </div>
+                                    </div>
+                                </Template>
+                            </RadzenDataGridColumn>
+
+                            <!-- DYNAMIC ASSIGNMENT COLUMNS -->
+                            @foreach (var a in VisibleAssignments)
+                            {
+                                <RadzenDataGridColumn TItem="GradebookRowDto"
+                                                      Title="@ShortenTitle(a.Title)"
+                                                      Width="130px">
+                                    <HeaderTemplate>
+                                        <div class="assignment-header"
+                                             title="@GetAssignmentTooltip(a)">
+                                            <div class="assignment-title-short">
+                                                @ShortenTitle(a.Title)
+                                            </div>
+                                            <div class="assignment-meta">
+                                                @if (a.DueAt != null)
+                                                {
+                                                    <span>@a.DueAt.Value.ToLocalTime().ToString("dd.MM")</span>
+                                                }
+                                                <span>@a.MaxPoints б.</span>
+                                            </div>
+                                        </div>
+                                    </HeaderTemplate>
+                                    <Template Context="row">
+                                        @{
+                                            var cell = row.Cells.FirstOrDefault(c => c.AssignmentId == a.AssignmentId);
+                                        }
+
+                                        @if (cell is null)
+                                        {
+                                            <div class="grade-cell grade-empty">
+                                                —
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="@GetCellCssClass(cell)"
+                                                 title="@GetCellTooltip(row, a, cell)"
+                                                 @onclick="@(() => OnCellClick(row, a, cell))"
+                                                 style="cursor:@(editMode ? "pointer" : "default");">
+                                                @RenderCellContent(cell, a)
+                                                @if (!string.IsNullOrWhiteSpace(cell.Comment))
+                                                {
+                                                    <RadzenIcon Icon="chat_bubble_outline"
+                                                                Style="font-size:0.9rem;margin-left:4px;opacity:0.7;" />
+                                                }
+                                            </div>
+                                        }
+                                    </Template>
+                                </RadzenDataGridColumn>
+                            }
+
+                            <!-- TOTAL / AVERAGE -->
+                            <RadzenDataGridColumn TItem="GradebookRowDto" Title="Сума" Width="90px">
+                                <Template Context="row">
+                                    @{
+                                        var sum = CalculateRowTotal(row);
+                                    }
+                                    <span class="row-total">
+                                        @(sum.HasValue ? $"{sum:F1}" : "—")
+                                    </span>
+                                </Template>
+                            </RadzenDataGridColumn>
+
+                            <RadzenDataGridColumn TItem="GradebookRowDto" Title="Середній %" Width="110px">
+                                <Template Context="row">
+                                    @{
+                                        var avg = CalculateRowAveragePercent(row);
+                                    }
+                                    <span class="row-average">
+                                        @(avg.HasValue ? $"{avg:F1}%" : "—")
+                                    </span>
+                                </Template>
+                            </RadzenDataGridColumn>
+                        </Columns>
+                    </RadzenDataGrid>
+                </div>
+
+                <!-- STATS -->
+                <div class="gradebook-stats">
+                    <RadzenCard Style="flex:1; margin-right:12px;">
+                        <div class="stats-title">Загальна статистика</div>
+                        <div class="stats-row">
+                            <span>Середній бал (відносно макс.):</span>
+                            <b>@(AveragePercent.HasValue ? $"{AveragePercent:F1}%" : "—")</b>
+                        </div>
+                        <div class="stats-row">
+                            <span>Подано робіт:</span>
+                            <b>@SubmittedCount / @PossibleSubmissionsCount</b>
+                        </div>
+                        <div class="stats-row">
+                            <span>Несдані роботи:</span>
+                            <b>@NotSubmittedCount</b>
+                        </div>
+                    </RadzenCard>
+
+                    <RadzenCard Style="flex:1;">
+                        <div class="stats-title">Інфо по завданнях</div>
+                        <div class="stats-row">
+                            <span>Опубліковані завдання:</span>
+                            <b>@PublishedAssignmentsCount</b>
+                        </div>
+                        <div class="stats-row">
+                            <span>Закриті завдання:</span>
+                            <b>@ClosedAssignmentsCount</b>
+                        </div>
+                    </RadzenCard>
+                </div>
+            </RadzenColumn>
+
+            <!-- RIGHT PANEL: GRADE EDIT PANEL -->
+            <RadzenColumn Size="12" SizeLG="3">
+                <div class="grade-panel">
+                    <RadzenText Text="Панель оцінювання"
+                                TextStyle="TextStyle.H6"
+                                Style="font-weight:700;margin-bottom:8px;" />
+
+                    @if (!editMode)
+                    {
+                        <p class="text-muted" style="font-size:0.9rem;">
+                            Увімкніть <b>“Режим редагування оцінок”</b>, щоб вибрати клітинку й виставити/змінити оцінку.
+                        </p>
+                    }
+                    else if (selectedCell == null || selectedAssignment == null || selectedRow == null)
+                    {
+                        <p class="text-muted" style="font-size:0.9rem;">
+                            Натисніть на клітинку в таблиці, щоб оцінити роботу студента.
+                        </p>
+                    }
+                    else
+                    {
+                        <div class="grade-panel-body">
+                            <p style="margin-bottom:4px;">
+                                <span style="font-size:0.85rem;color:var(--text-muted);">Студент:</span><br />
+                                <b>@selectedRow.StudentName</b>
+                            </p>
+
+                            <p style="margin-bottom:4px;">
+                                <span style="font-size:0.85rem;color:var(--text-muted);">Завдання:</span><br />
+                                <b>@selectedAssignment.Title</b>
+                            </p>
+
+                            <p style="margin-bottom:8px;font-size:0.85rem;color:var(--text-muted);">
+                                Макс. бал: <b>@selectedAssignment.MaxPoints</b><br />
+                                Статус відповіді: <b>@selectedCell.Status.ToString()</b><br />
+                                @if (selectedCell.SubmittedAt != null)
+                                {
+                                    <span>Надіслано: @selectedCell.SubmittedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                                }
+                            </p>
+
+                            <RadzenNumeric @bind-Value="editScore"
+                                           Placeholder="Оцінка"
+                                           Style="width:100%;margin-bottom:8px;"
+                                           Max="@selectedAssignment.MaxPoints"
+                                           Min="0" />
+
+                            <RadzenTextArea @bind-Value="editComment"
+                                            Rows="3"
+                                            Placeholder="Коментар викладача"
+                                            Style="width:100%;margin-bottom:8px;" />
+
+                            <RadzenButton Text="Зберегти оцінку"
+                                          Icon="save"
+                                          Class="btn-primary-custom"
+                                          Style="width:100%;margin-bottom:6px;"
+                                          Click="@SaveGradeAsync" />
+
+                            <RadzenButton Text="Скинути вибір"
+                                          Icon="close"
+                                          ButtonStyle="ButtonStyle.Light"
+                                          Variant="Variant.Outlined"
+                                          Style="width:100%;"
+                                          Click="@ClearSelection" />
+                        </div>
+                    }
+                </div>
+            </RadzenColumn>
+        </RadzenRow>
+    }
+</div>
+
+<style>
+    .gradebook-header {
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-start;
+        margin-bottom:20px;
+        padding:16px 20px;
+        background:linear-gradient(135deg,#e3f2fd,#f5f7ff);
+        border-radius:16px;
+        border:1px solid rgba(148,163,184,0.3);
+    }
+
+    .gradebook-header-left {
+        display:flex;
+        align-items:flex-start;
+        gap:16px;
+    }
+
+    .gradebook-icon {
+        width:48px;
+        height:48px;
+        border-radius:14px;
+        background:rgba(0,33,113,0.1);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        color:var(--primary-color);
+        font-size:1.8rem;
+    }
+
+    .gradebook-title {
+        margin:0;
+        font-size:1.6rem;
+        font-weight:800;
+        color:var(--primary-color);
+    }
+
+    .gradebook-subtitle {
+        margin:2px 0 6px 0;
+        color:var(--text-secondary);
+    }
+
+    .gradebook-meta {
+        display:flex;
+        gap:16px;
+        font-size:0.9rem;
+        color:var(--text-secondary);
+    }
+
+    .gradebook-header-right {
+        display:flex;
+        align-items:center;
+    }
+
+    .gradebook-filter-bar {
+        display:flex;
+        align-items:center;
+        gap:8px;
+        padding:10px 4px 16px 4px;
+    }
+
+    .gradebook-table-wrapper {
+        overflow-x:auto;
+        border-radius:12px;
+        border:1px solid rgba(148,163,184,0.4);
+        background:rgba(255,255,255,0.8);
+    }
+
+    .gradebook-grid .rz-data-grid-table {
+        font-size:0.85rem;
+    }
+
+    .student-cell {
+        display:flex;
+        align-items:center;
+        gap:8px;
+    }
+
+    .student-avatar {
+        width:28px;
+        height:28px;
+        border-radius:50%;
+        background:rgba(0,33,113,0.1);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-size:0.8rem;
+        font-weight:700;
+        color:var(--primary-color);
+    }
+
+    .student-name {
+        font-weight:600;
+        color:var(--text-main);
+    }
+
+    .assignment-header {
+        font-size:0.8rem;
+        text-align:center;
+    }
+
+    .assignment-title-short {
+        font-weight:600;
+        color:var(--text-main);
+    }
+
+    .assignment-meta {
+        font-size:0.75rem;
+        color:var(--text-muted);
+        display:flex;
+        justify-content:center;
+        gap:4px;
+    }
+
+    .grade-cell {
+        padding:4px 6px;
+        border-radius:8px;
+        text-align:center;
+        font-size:0.8rem;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+    }
+
+    .grade-empty {
+        color:#cbd5e1;
+        background:transparent;
+    }
+
+    .grade-not-submitted {
+        color:#94a3b8;
+        background:rgba(148,163,184,0.1);
+    }
+
+    .grade-submitted {
+        color:#854d0e;
+        background:rgba(250,204,21,0.15);
+    }
+
+    .grade-graded-good {
+        color:#166534;
+        background:rgba(22,163,74,0.12);
+    }
+
+    .grade-graded-bad {
+        color:#b91c1c;
+        background:rgba(239,68,68,0.12);
+    }
+
+    .grade-returned {
+        color:#92400e;
+        background:rgba(251,191,36,0.15);
+    }
+
+    .row-total, .row-average {
+        font-weight:600;
+        color:var(--text-main);
+    }
+
+    .gradebook-stats {
+        display:flex;
+        flex-wrap:wrap;
+        gap:12px;
+        margin-top:14px;
+    }
+
+    .stats-title {
+        font-weight:700;
+        margin-bottom:6px;
+        color:var(--text-main);
+    }
+
+    .stats-row {
+        display:flex;
+        justify-content:space-between;
+        font-size:0.85rem;
+        margin-bottom:3px;
+        color:var(--text-secondary);
+    }
+
+    .grade-panel {
+        border-radius:12px;
+        border:1px solid rgba(148,163,184,0.4);
+        background:rgba(248,250,252,0.9);
+        padding:14px 16px;
+    }
+
+    .grade-panel-body {
+        margin-top:6px;
+        font-size:0.85rem;
+    }
+</style>
+
+@code {
+    [Parameter] public Guid ClassroomId { get; set; }
+
+    private GradebookDto? gradebook;
+    private bool isLoading = true;
+    private string? error;
+
+    private string searchStudent = string.Empty;
+    private string assignmentFilter = "all";
+    private bool pointsMode = true; // true = бали, false = %
+    private bool showOnlyActiveStudents = true; // поки що всі активні
+    private bool editMode = false;
+
+    // Вибір клітинки для оцінювання
+    private GradebookRowDto? selectedRow;
+    private GradebookAssignmentDto? selectedAssignment;
+    private GradebookCellDto? selectedCell;
+    private decimal? editScore;
+    private string? editComment;
+
+    private bool IsAuthenticated => CurrentUser.User != null;
+
+    private bool IsTeacher =>
+        CurrentUser.User?.Roles?.Any(r =>
+            string.Equals(r, "teacher", StringComparison.OrdinalIgnoreCase) ||
+            r.Contains("викладач", StringComparison.OrdinalIgnoreCase)
+        ) == true;
+
+    // --- Ініціалізація ---
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!IsAuthenticated || !IsTeacher)
+        {
+            isLoading = false;
+            return;
+        }
+
+        await LoadGradebook();
+    }
+
+    private async Task LoadGradebook()
+    {
+        isLoading = true;
+        error = null;
+
+        try
+        {
+            gradebook = await GradebookService.GetForClassroomAsync(ClassroomId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    // --- Метадані / статистика ---
+
+    private int TotalStudents => gradebook?.Rows.Count ?? 0;
+    private int TotalAssignments => gradebook?.Assignments.Count ?? 0;
+
+    private decimal? AveragePercent
+    {
+        get
+        {
+            if (gradebook is null) return null;
+
+            decimal totalScore = 0;
+            decimal totalMax = 0;
+
+            foreach (var row in gradebook.Rows)
+            {
+                foreach (var cell in row.Cells)
+                {
+                    if (cell.Score.HasValue && cell.MaxPoints > 0)
+                    {
+                        totalScore += cell.Score.Value;
+                        totalMax += cell.MaxPoints;
+                    }
+                }
+            }
+
+            if (totalMax == 0) return null;
+            return totalScore / totalMax * 100m;
+        }
+    }
+
+    private int SubmittedCount
+        => gradebook?.Rows.Sum(r => r.Cells.Count(c => c.Status == SubmissionStatus.Submitted || c.Status == SubmissionStatus.Graded || c.Status == SubmissionStatus.ReturnedForRevision)) ?? 0;
+
+    private int PossibleSubmissionsCount
+        => (gradebook?.Rows.Count ?? 0) * (gradebook?.Assignments.Count ?? 0);
+
+    private int NotSubmittedCount
+        => gradebook?.Rows.Sum(r => r.Cells.Count(c => c.Status == SubmissionStatus.NotSubmitted)) ?? 0;
+
+    private int PublishedAssignmentsCount
+        => gradebook?.Assignments.Count(a => string.Equals(a.Status, "Published", StringComparison.OrdinalIgnoreCase)) ?? 0;
+
+    private int ClosedAssignmentsCount
+        => gradebook?.Assignments.Count(a => string.Equals(a.Status, "Closed", StringComparison.OrdinalIgnoreCase)) ?? 0;
+
+    // --- Фільтри ---
+
+    private IEnumerable<GradebookAssignmentDto> VisibleAssignments
+    {
+        get
+        {
+            if (gradebook is null)
+                return Enumerable.Empty<GradebookAssignmentDto>();
+
+            var q = gradebook.Assignments.AsEnumerable();
+
+            switch (assignmentFilter)
+            {
+                case "published":
+                    q = q.Where(a => string.Equals(a.Status, "Published", StringComparison.OrdinalIgnoreCase));
+                    break;
+                case "with-deadline":
+                    q = q.Where(a => a.DueAt != null);
+                    break;
+                case "with-grades":
+                    q = q.Where(a =>
+                        gradebook.Rows.Any(r =>
+                            r.Cells.Any(c => c.AssignmentId == a.AssignmentId && c.Score.HasValue)));
+                    break;
+            }
+
+            return q;
+        }
+    }
+
+    private IEnumerable<GradebookRowDto> FilteredRows
+    {
+        get
+        {
+            if (gradebook is null)
+                return Enumerable.Empty<GradebookRowDto>();
+
+            var q = gradebook.Rows.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(searchStudent))
+            {
+                var s = searchStudent.Trim().ToLowerInvariant();
+                q = q.Where(r => r.StudentName != null &&
+                                 r.StudentName.ToLowerInvariant().Contains(s));
+            }
+
+            // showOnlyActiveStudents – на майбутнє, зараз всі активні
+            return q;
+        }
+    }
+
+    private readonly IEnumerable<object> assignmentFilterOptions = new[]
+    {
+        new { Text = "Усі завдання", Value = "all" },
+        new { Text = "Тільки опубліковані", Value = "published" },
+        new { Text = "Тільки з дедлайном", Value = "with-deadline" },
+        new { Text = "Тільки з оцінками", Value = "with-grades" }
+    };
+
+    private readonly IEnumerable<object> pointsModeOptions = new[]
+    {
+        new { Text = "Бали", Value = true },
+        new { Text = "% від макс.", Value = false }
+    };
+
+    // --- Обробка клітинок / вибір ---
+
+    private void OnCellClick(GradebookRowDto row, GradebookAssignmentDto assignment, GradebookCellDto cell)
+    {
+        if (!editMode)
+            return;
+
+        selectedRow = row;
+        selectedAssignment = assignment;
+        selectedCell = cell;
+
+        editScore = cell.Score;
+        editComment = cell.Comment;
+    }
+
+    private void ClearSelection()
+    {
+        selectedRow = null;
+        selectedAssignment = null;
+        selectedCell = null;
+        editScore = null;
+        editComment = null;
+    }
+
+    // --- Збереження оцінки ---
+
+    private async Task SaveGradeAsync()
+    {
+        if (!editMode ||
+            selectedRow == null ||
+            selectedAssignment == null ||
+            editScore == null)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Немає вибраної комірки",
+                Detail = "Оберіть студента та завдання в таблиці.",
+                Duration = 3000
+            });
+            return;
+        }
+
+        try
+        {
+            if (CurrentUser.User is null || !Guid.TryParse(CurrentUser.User.UserId, out var teacherId))
+            {
+                Toast.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Помилка",
+                    Detail = "Некоректний користувач.",
+                    Duration = 4000
+                });
+                return;
+            }
+
+            // 1) Гарантуємо існування Submission для цього студент × завдання
+            var submission = await SubmissionService.EnsureForStudentAsync(
+                selectedAssignment.AssignmentId,
+                selectedRow.StudentId,
+                CancellationToken.None);
+
+            // 2) Виставляємо оцінку
+            var dto = new GradeSubmissionDto(
+                submission.Id,
+                editScore.Value,
+                editComment);
+
+            await SubmissionService.GradeAsync(dto, teacherId, CancellationToken.None);
+
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Оцінку збережено",
+                Detail = $"{selectedRow.StudentName}: {editScore} / {selectedAssignment.MaxPoints}",
+                Duration = 3000
+            });
+
+            // 3) Перезавантажуємо журнал
+            await LoadGradebook();
+
+            // 4) Оновлюємо вибрану клітинку згідно з новими даними (опційно можна занулити)
+            ClearSelection();
+        }
+        catch (Exception ex)
+        {
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Помилка при збереженні оцінки",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+    }
+
+    // --- Допоміжні методи для відображення ---
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0].Substring(0, Math.Min(1, parts[0].Length)).ToUpperInvariant();
+
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpperInvariant();
+    }
+
+    private string ShortenTitle(string title, int maxLen = 18)
+    {
+        if (string.IsNullOrEmpty(title)) return "";
+        return title.Length <= maxLen ? title : title.Substring(0, maxLen - 1) + "…";
+    }
+
+    private string GetAssignmentTooltip(GradebookAssignmentDto a)
+    {
+        var due = a.DueAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "Без дедлайну";
+        return $"{a.Title}\nМакс. бал: {a.MaxPoints}\nДедлайн: {due}\nСтатус: {a.Status}";
+    }
+
+    private string GetCellTooltip(GradebookRowDto row, GradebookAssignmentDto a, GradebookCellDto cell)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine(row.StudentName);
+        sb.AppendLine(a.Title);
+        sb.AppendLine($"Статус: {cell.Status}");
+
+        if (cell.Score.HasValue)
+            sb.AppendLine($"Оцінка: {cell.Score}/{a.MaxPoints}");
+
+        if (cell.SubmittedAt != null)
+            sb.AppendLine($"Надіслано: {cell.SubmittedAt.Value.ToLocalTime():dd.MM.yyyy HH:mm}");
+
+        if (!string.IsNullOrWhiteSpace(cell.Comment))
+            sb.AppendLine($"Коментар: {cell.Comment}");
+
+        return sb.ToString();
+    }
+
+    private MarkupString RenderCellContent(GradebookCellDto cell, GradebookAssignmentDto a)
+    {
+        if (cell.Status == SubmissionStatus.NotSubmitted && cell.SubmittedAt == null)
+            return (MarkupString)"—";
+
+        string text;
+
+        if (pointsMode)
+        {
+            // Режим "бали"
+            if (cell.Score.HasValue)
+                text = $"{cell.Score}/{a.MaxPoints}";
+            else if (cell.Status == SubmissionStatus.Submitted)
+                text = "Очікує";
+            else
+                text = "—";
+        }
+        else
+        {
+            // Режим "% від макс."
+            if (cell.Score.HasValue && a.MaxPoints > 0)
+            {
+                var percent = (decimal)cell.Score.Value / a.MaxPoints * 100m;
+                text = $"{percent:F0}%";
+            }
+            else if (cell.Status == SubmissionStatus.Submitted)
+                text = "Очікує";
+            else
+                text = "—";
+        }
+
+        return (MarkupString)text;
+    }
+
+    private string GetCellCssClass(GradebookCellDto cell)
+    {
+        return cell.Status switch
+        {
+            SubmissionStatus.NotSubmitted => "grade-cell grade-not-submitted",
+            SubmissionStatus.Submitted => "grade-cell grade-submitted",
+            SubmissionStatus.Graded => GetGradedCss(cell),
+            SubmissionStatus.ReturnedForRevision => "grade-cell grade-returned",
+            _ => "grade-cell grade-empty"
+        };
+    }
+
+    private string GetGradedCss(GradebookCellDto cell)
+    {
+        if (!cell.Score.HasValue || cell.MaxPoints <= 0)
+            return "grade-cell grade-graded-bad";
+
+        var p = cell.Score.Value / cell.MaxPoints * 100m;
+        return p >= 60m ? "grade-cell grade-graded-good" : "grade-cell grade-graded-bad";
+    }
+
+    private decimal? CalculateRowTotal(GradebookRowDto row)
+    {
+        if (row.Cells is null) return null;
+
+        var scores = row.Cells.Where(c => c.Score.HasValue).Select(c => c.Score!.Value).ToList();
+        if (!scores.Any()) return null;
+
+        return scores.Sum();
+    }
+
+    private decimal? CalculateRowAveragePercent(GradebookRowDto row)
+    {
+        if (row.Cells is null) return null;
+
+        decimal totalScore = 0;
+        decimal totalMax = 0;
+
+        foreach (var c in row.Cells)
+        {
+            if (c.Score.HasValue && c.MaxPoints > 0)
+            {
+                totalScore += c.Score.Value;
+                totalMax += c.MaxPoints;
+            }
+        }
+
+        if (totalMax == 0) return null;
+
+        return totalScore / totalMax * 100m;
+    }
+
+    // --- Навігація / дії хедера ---
+
+    private void GoBackToClassroom()
+        => Nav.NavigateTo($"/classrooms/{ClassroomId}");
+
+    private void GoToMyGrades()
+        => Nav.NavigateTo($"/classrooms/{ClassroomId}/my-grades");
+
+    private void ExportGradebook()
+    {
+        Toast.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Info,
+            Summary = "Експорт",
+            Detail = "Експорт журналу буде реалізовано пізніше.",
+            Duration = 3000
+        });
+    }
+
+    private void PrintGradebook()
+    {
+        // Найпростіше – викликати window.print() через JSInterop
+        // Можна зробити пізніше; зараз – заглушка:
+        Toast.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Info,
+            Summary = "Друк",
+            Detail = "Функція друку буде реалізована пізніше.",
+            Duration = 3000
+        });
+    }
+}

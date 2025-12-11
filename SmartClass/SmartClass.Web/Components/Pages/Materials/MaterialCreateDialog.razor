@@ -1,0 +1,186 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using SmartClass.Application.Abstractions
+@using SmartClass.Application.Abstractions.Auth
+@using SmartClass.Application.Contracts.Classrooms
+@using SmartClass.Application.Contracts.Materials
+@using SmartClass.Web.Services
+@using Radzen
+
+@inject IMaterialService MaterialService
+@inject ITokenProvider TokenProvider
+@inject CurrentUserState CurrentUser
+@inject Radzen.NotificationService Toast
+@inject Radzen.DialogService DialogService
+
+<EditForm Model="@vm" OnValidSubmit="@HandleSubmit">
+    <DataAnnotationsValidator />
+
+    <RadzenStack Gap="1.5rem" Style="padding: 10px 0;">
+
+        <h3 style="color: var(--primary-color); font-weight: 700; font-size: 1.4rem; margin-top: 0;">
+            Створення нового матеріалу
+        </h3>
+
+        <!-- Назва -->
+        <div>
+            <label class="form-label">Заголовок *</label>
+            <RadzenTextBox @bind-Value="vm.Title" Name="Title"
+                           Placeholder="Напр. 'Лекція 1: Змінні та Типи Даних'"
+                           Style="width: 100%;" />
+            <ValidationMessage For="@(() => vm.Title)" />
+        </div>
+
+        <!-- Короткий опис -->
+        <div>
+            <label class="form-label">Короткий опис</label>
+            <RadzenTextArea @bind-Value="vm.Description" Name="Description"
+                            Style="width: 100%;" Rows="2"
+                            Placeholder="Коротко про що цей матеріал" />
+        </div>
+
+        <!-- Детальний зміст -->
+        <div>
+            <label class="form-label">Детальний зміст (HTML)</label>
+            <RadzenTextArea @bind-Value="vm.ContentHtml" Name="ContentHtml"
+                            Style="width:100%; height: 250px; margin-bottom: 0;"
+                            Placeholder="Конспект уроку, формули, коди..." />
+        </div>
+
+        <!-- 🔹 Файли до матеріалу (поки як тимчасові) -->
+        <div>
+            <label class="form-label">Прикріпити файли</label>
+
+            <RadzenUpload Url="@GetTempUploadUrl()"
+                          Multiple="true"
+                          Accept="*/*"
+                          Auto="true"
+                          ChooseText="Обрати файл(и)"
+                          Complete="@OnUploadCompleted"
+                          Error="@OnUploadError"
+                          Style="margin-bottom:10px;">
+                @if (!string.IsNullOrWhiteSpace(uploadToken))
+                {
+                    <RadzenUploadHeader Name="Authorization"
+                                        Value="@($"Bearer {uploadToken}")" />
+                }
+            </RadzenUpload>
+
+            <small style="color: var(--text-muted);">
+                Файли будуть автоматично прив’язані до цього матеріалу після збереження.
+            </small>
+        </div>
+
+    </RadzenStack>
+
+    <div class="d-flex justify-content-end" style="margin-top: 2rem;">
+        <RadzenButton Text="Скасувати"
+                      Icon="close"
+                      ButtonStyle="ButtonStyle.Secondary"
+                      Variant="Variant.Outlined"
+                      Click="@(() => DialogService.Close(false))"
+                      Style="border-radius: 8px; font-weight: 600; margin-right: 12px;
+                             color: var(--text-secondary); border-color: #cbd5e1;" />
+
+        <RadzenButton Text="Зберегти"
+                      Icon="save"
+                      Class="btn-primary-custom"
+                      ButtonType="ButtonType.Submit"
+                      Style="padding: 8px 24px !important;" />
+    </div>
+</EditForm>
+
+<style>
+    .form-label {
+        color: var(--text-main);
+        font-weight: 600;
+        font-size: 0.95rem;
+        display: block;
+        margin-bottom: 4px;
+    }
+</style>
+
+@code {
+    [Parameter] public Guid ClassroomId { get; set; }
+
+    private Vm vm = new();
+    private string? uploadToken;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            uploadToken = await TokenProvider.GetAccessTokenAsync();
+            StateHasChanged();
+        }
+    }
+
+    private string GetTempUploadUrl()
+        => $"/api/files/upload/temp/classroom/{ClassroomId}";
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            if (CurrentUser.User is null) { ShowError("Ви не авторизовані."); return; }
+            var userIdStr = CurrentUser.User.UserId;
+            if (!Guid.TryParse(userIdStr, out var teacherId)) { ShowError("ID користувача недійсний."); return; }
+
+            var dto = new CreateMaterialDto(ClassroomId, vm.Title, vm.Description, vm.ContentHtml);
+
+            await MaterialService.CreateAsync(dto, teacherId);
+
+            Toast.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Збережено",
+                Detail = "Матеріал додано."
+            });
+            DialogService.Close(true);
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex.Message);
+        }
+    }
+
+    private void OnUploadCompleted(UploadCompleteEventArgs _)
+    {
+        Toast.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Файл(и) завантажено",
+            Detail = "Після збереження вони будуть прикріплені до матеріалу.",
+            Duration = 3000
+        });
+    }
+
+    private void OnUploadError(UploadErrorEventArgs args)
+    {
+        Toast.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Error,
+            Summary = "Помилка завантаження",
+            Detail = args.Message,
+            Duration = 4000
+        });
+    }
+
+    private void ShowError(string message)
+    {
+        Toast.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Error,
+            Summary = "Помилка",
+            Detail = message,
+            Duration = 5000
+        });
+    }
+
+    private sealed class Vm
+    {
+        [Required(ErrorMessage = "Введіть заголовок")]
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? ContentHtml { get; set; }
+    }
+}

@@ -1,0 +1,283 @@
+﻿@page "/classrooms"
+@layout MainLayout
+
+@using SmartClass.Application.Abstractions
+@using SmartClass.Application.Contracts.Classrooms
+@using SmartClass.Web.Services
+@using Radzen
+
+@inject NavigationManager Nav
+@inject CurrentUserState CurrentUser
+@inject DialogService DialogService
+@inject Radzen.NotificationService Toast
+@inject IClassroomService ClassroomService
+
+<PageTitle>Мої класи</PageTitle>
+
+<div class="animate-fade-in">
+
+    <!-- HEADER & ACTIONS -->
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap" Gap="1rem" Style="margin-bottom: 24px;">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+            <RadzenIcon Icon="school" Style="color: var(--primary-color); font-size: 2rem;" />
+            <div>
+                <h2 style="margin: 0; color: var(--primary-color); font-weight: 700;">Мої класи</h2>
+                <span style="color: var(--text-muted); font-size: 0.9rem;">Керуйте своїми навчальними просторами</span>
+            </div>
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="10px" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
+            <!-- Пошук -->
+            <RadzenTextBox Placeholder="Пошук класу..." @bind-Value="searchTerm" @oninput="@(args => OnSearch(args.Value.ToString()))"
+                           Style="width: 250px; border-radius: 20px; padding-left: 15px;" />
+
+            @if (IsAuthenticated)
+            {
+                @if (IsTeacher)
+                {
+                    <RadzenButton Icon="add" Text="Створити" Class="btn-primary-custom" Click="@OpenCreateDialog" />
+                }
+                <RadzenButton Icon="login" Text="Приєднатися" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Style="border-radius: 10px; font-weight: 600; border-color: #cbd5e1; color: var(--text-secondary);" Click="@OpenJoinDialog" />
+            }
+        </RadzenStack>
+    </RadzenStack>
+
+    @if (!IsAuthenticated)
+    {
+        <div class="empty-state">
+            <RadzenIcon Icon="lock" Style="font-size: 3rem; color: #f59e0b; margin-bottom: 1rem;" />
+            <h3>Доступ обмежено</h3>
+            <p>Будь ласка, увійдіть у систему, щоб бачити свої класи.</p>
+            <RadzenButton Text="Увійти" Class="btn-primary-custom mt-3" Click="@(() => Nav.NavigateTo("/login"))" />
+        </div>
+    }
+    else if (isLoading)
+    {
+        <div style="text-align: center; padding: 60px;">
+            <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" Style="color: var(--primary-color);" />
+            <p style="color: var(--text-muted); margin-top: 15px;">Завантаження...</p>
+        </div>
+    }
+    else if (error != null)
+    {
+        <RadzenAlert Severity="AlertSeverity.Error" Variant="Variant.Flat" Shade="Shade.Lighter" Style="border-radius: 12px;">@error</RadzenAlert>
+    }
+    else if (!classrooms.Any())
+    {
+        <div class="empty-state">
+            <RadzenIcon Icon="class" Style="font-size: 4rem; color: #cbd5e1; margin-bottom: 1rem;" />
+            <h3>У вас немає класів</h3>
+            <p>Створіть новий клас або приєднайтеся до існуючого, щоб почати навчання.</p>
+            @if (IsTeacher)
+            {
+                <RadzenButton Text="Створити перший клас" Icon="add_circle" Class="btn-primary-custom mt-3" Click="@OpenCreateDialog" />
+            }
+            else
+            {
+                <RadzenButton Text="Приєднатися до класу" Icon="login" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Class="mt-3" Click="@OpenJoinDialog" />
+            }
+        </div>
+    }
+    else
+    {
+        <!-- TABS: Фільтрація (Всі / Викладаю / Навчаюсь) -->
+        <RadzenTabs RenderMode="TabRenderMode.Client" Style="background: transparent; border: none; box-shadow: none;">
+            <Tabs>
+                <RadzenTabsItem Text="Всі класи">
+                    <div class="mt-3">@RenderClassroomGrid(filteredClassrooms)</div>
+                </RadzenTabsItem>
+                <RadzenTabsItem Text="Я викладаю" Visible="@IsTeacher">
+                    <div class="mt-3">@RenderClassroomGrid(filteredClassrooms.Where(c => c.RoleInClass == "Teacher"))</div>
+                </RadzenTabsItem>
+                <RadzenTabsItem Text="Я навчаюсь">
+                    <div class="mt-3">@RenderClassroomGrid(filteredClassrooms.Where(c => c.RoleInClass != "Teacher"))</div>
+                </RadzenTabsItem>
+            </Tabs>
+        </RadzenTabs>
+    }
+</div>
+
+@* --- HELPER: RENDER GRID --- *@
+@code {
+    RenderFragment RenderClassroomGrid(IEnumerable<MyClassroomView> classes) => __builder =>
+    {
+        if (!classes.Any())
+        {
+            <div class="text-center p-4 text-muted">Немає класів у цій категорії.</div>
+        }
+        else
+        {
+            <RadzenRow Gap="1.5rem">
+                @foreach (var room in classes)
+                {
+                    <RadzenColumn Size="12" SizeMD="6" SizeLG="4" SizeXL="3">
+                        <div class="classroom-card" @onclick="@(() => Nav.NavigateTo($"/classrooms/{room.Id}"))">
+
+                            <!-- Header with Gradient -->
+                            <div class="card-header-bg @GetGradientClass(room.Title)">
+                                <div class="card-header-content">
+                                    <h4 class="text-truncate" title="@room.Title">@room.Title</h4>
+                                    <span class="text-truncate" style="opacity: 0.9; font-size: 0.9rem;">@room.Section</span>
+                                </div>
+                                <div class="card-options" @onclick:stopPropagation="true">
+                                    <RadzenButton Icon="more_vert" ButtonStyle="ButtonStyle.Light" Variant="Variant.Text"
+                                                  Style="color: white;" Click="@(args => OpenCardMenu(args, room))" />
+                                </div>
+                            </div>
+
+                            <!-- Body -->
+                            <div class="card-body">
+                                <div class="role-badge">
+                                    @if (room.RoleInClass == "Teacher")
+                                    {
+                                        <span class="badge-teacher">Викладач</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-student">Студент</span>
+                                    }
+                                </div>
+                                <div class="mt-3" style="color: var(--text-muted); font-size: 0.85rem;">
+                                    <!-- Тут можна додати ім'я викладача, якщо воно є в DTO -->
+                                    <span>Натисніть, щоб відкрити</span>
+                                </div>
+                            </div>
+
+                            <!-- Footer -->
+                            <div class="card-footer">
+                                <RadzenIcon Icon="folder_open" Style="font-size: 1.2rem; color: var(--text-muted);" />
+                                <RadzenIcon Icon="assignment" Style="font-size: 1.2rem; color: var(--text-muted); margin-left: auto;" />
+                            </div>
+                        </div>
+                    </RadzenColumn>
+                }
+            </RadzenRow>
+        }
+    };
+}
+
+
+
+@code {
+    private bool isLoading = true;
+    private string? error;
+    private List<MyClassroomView> classrooms = new();
+    private List<MyClassroomView> filteredClassrooms = new();
+    private string searchTerm = "";
+
+    private bool IsAuthenticated => CurrentUser.User != null;
+    private bool IsTeacher =>
+        CurrentUser.User?.Roles?.Any(r =>
+            string.Equals(r, "Teacher", StringComparison.OrdinalIgnoreCase) ||
+            r.Contains("викладач", StringComparison.OrdinalIgnoreCase)
+        ) == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        error = null;
+
+        if (!IsAuthenticated)
+        {
+            isLoading = false;
+            return;
+        }
+
+        try
+        {
+            var userIdStr = CurrentUser.User!.UserId;
+            if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                error = "ID користувача не знайдено.";
+                return;
+            }
+
+            var list = await ClassroomService.GetMyClassroomsAsync(userId, CancellationToken.None);
+
+            classrooms = list.Select(x => new MyClassroomView
+            {
+                Id = x.Id,
+                Title = x.Title,
+                Section = x.Section,
+                RoleInClass = x.RoleInClass ?? ""
+            }).ToList();
+
+            // Initial filter
+            OnSearch("");
+        }
+        catch (Exception ex)
+        {
+            error = "Не вдалося завантажити класи.";
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OnSearch(string value)
+    {
+        searchTerm = value;
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredClassrooms = classrooms;
+        }
+        else
+        {
+            filteredClassrooms = classrooms
+                .Where(c => c.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                         || (c.Section?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false))
+                .ToList();
+        }
+    }
+
+    // Генерує клас градієнта на основі першої букви назви (щоб колір був постійним)
+    private string GetGradientClass(string title)
+    {
+        if (string.IsNullOrEmpty(title)) return "grad-1";
+        int index = (title[0] % 5) + 1; // 1-5
+        return $"grad-{index}";
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        if (!IsTeacher)
+        {
+            Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Доступ заборонено", Detail = "Тільки викладачі." });
+            return;
+        }
+        var result = await DialogService.OpenAsync<ClassroomCreateDialog>(
+            "Створення класу", null, new DialogOptions { Width = "500px", Resizable = false, Draggable = true, CssClass = "custom-dialog" });
+
+        if (result is bool ok && ok) await LoadAsync();
+    }
+
+    private async Task OpenJoinDialog()
+    {
+        var result = await DialogService.OpenAsync<JoinClassroomDialog>(
+            "Приєднання до класу", null, new DialogOptions { Width = "450px", Resizable = false, Draggable = true });
+
+        if (result is bool ok && ok) await LoadAsync();
+    }
+
+    private void OpenCardMenu(MouseEventArgs args, MyClassroomView room)
+    {
+        // Тут можна відкрити контекстне меню (ContextMenu)
+        // Для спрощення поки що просто переходимо
+        // Nav.NavigateTo($"/classrooms/{room.Id}");
+    }
+
+    private sealed class MyClassroomView
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? Section { get; set; }
+        public string RoleInClass { get; set; } = string.Empty;
+    }
+}

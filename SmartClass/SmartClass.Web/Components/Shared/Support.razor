@@ -1,0 +1,92 @@
+﻿@page "/support"
+@layout MainLayout
+
+@using Radzen
+@using Radzen.Blazor
+@inject NotificationService Toast
+
+<PageTitle>Підтримка та Допомога</PageTitle>
+
+<div class="animate-fade-in">
+
+    <!-- 1. HERO & SEARCH SECTION (ЗМІНЕНО: Поле пошуку тепер тільки для візуалізації) -->
+    <div class="support-hero text-center rz-mb-5">
+        <h1 style="color: var(--primary-color); font-weight: 800; margin-bottom: 15px; font-size: 2.5rem;">
+            Довідковий центр Smart Class
+        </h1>
+        <p style="color: var(--text-secondary); max-width: 600px; margin: 0 auto 25px auto; font-size: 1.1rem;">
+            Тут ви знайдете відповіді на поширені запитання та зможете зв'язатися з нашою командою.
+        </p>
+
+        <!-- ІНФОРМАЦІЙНИЙ БЛОК ПОШУКУ (НЕ ФУНКЦІОНАЛЬНИЙ) -->
+        <div style="width: 100%; max-width: 500px; margin: 0 auto; display: flex; box-shadow: 0 5px 15px rgba(0, 33, 113, 0.1);">
+            <RadzenTextBox Placeholder="Введіть ключові слова (напр., 'як створити клас')"
+                           Style="width: 100%; border-radius: 25px 0 0 25px; padding: 12px 20px; border-right: none;"
+                           ReadOnly="true" />
+            <RadzenButton Icon="search" ButtonStyle="ButtonStyle.Primary"
+                          Style="border-radius: 0 25px 25px 0; padding: 0 25px; background-color: var(--primary-color); border: 1px solid var(--primary-color);" />
+        </div>
+    </div>
+
+    <!-- 2. FAQ / ПОШИРЕНІ ПИТАННЯ -->
+    <RadzenText Text="Поширені питання (FAQ)" TextStyle="TextStyle.H4" TagName="TagName.H3" Style="color: var(--text-main); font-weight: 700; margin-bottom: 20px;" />
+
+    <RadzenAccordion Multiple="true" Class="faq-accordion">
+        <Items>
+            <RadzenAccordionItem Text="Як почати роботу з Smart Class?" Icon="school">
+                <p>
+                    Для початку роботи вам потрібно зареєструватися. Якщо ви викладач, ви зможете створювати класи та запрошувати студентів. Якщо ви студент, використовуйте код запрошення, щоб приєднатися до потрібного класу.
+                </p>
+            </RadzenAccordionItem>
+            <RadzenAccordionItem Text="Чому не відображаються мої класи?" Icon="warning">
+                <p>
+                    Переконайтеся, що ви успішно увійшли в систему. Якщо ви приєдналися до класу за кодом, але клас не відображається, зверніться до викладача для перевірки коду.
+                </p>
+            </RadzenAccordionItem>
+            <RadzenAccordionItem Text="Чи можу я змінити свою роль (Студент/Викладач)?" Icon="person_pin">
+                <p>
+                    Роль встановлюється під час реєстрації. Для зміни ролі зверніться до адміністрації платформи через контактну пошту, вказану нижче.
+                </p>
+            </RadzenAccordionItem>
+        </Items>
+    </RadzenAccordion>
+
+    <div style="margin-top: 4rem;">
+        <!-- 3. КОНТАКТИ ТА ПРЯМИЙ ЗВ'ЯЗОК -->
+        <RadzenText Text="Зв'язатися з нами" TextStyle="TextStyle.H4" TagName="TagName.H3" Style="color: var(--text-main); font-weight: 700; margin-bottom: 20px;" />
+
+        <RadzenRow Gap="2rem">
+
+            <!-- Email -->
+            <RadzenColumn Size="12" SizeMD="6">
+                <div class="contact-card">
+                    <RadzenIcon Icon="support" Style="color: var(--primary-color); font-size: 2rem;" />
+                    <h4 style="color: var(--text-main); margin: 10px 0 5px 0;">Технічна підтримка</h4>
+                    <p style="color: var(--text-secondary);">Для запитів, пов'язаних з помилками, доступом або функціоналом.</p>
+                    <RadzenLink Text="support@smartclass.com" Path="mailto:support@smartclass.com" Style="font-weight: 600; color: var(--primary-light);" />
+                </div>
+            </RadzenColumn>
+
+            <!-- Адміністрація -->
+            <RadzenColumn Size="12" SizeMD="6">
+                <div class="contact-card">
+                    <RadzenIcon Icon="admin_panel_settings" Style="color: var(--primary-color); font-size: 2rem;" />
+                    <h4 style="color: var(--text-main); margin: 10px 0 5px 0;">Адміністрація та партнерство</h4>
+                    <p style="color: var(--text-secondary);">З питань співпраці, адміністрування та ліцензування.</p>
+                    <RadzenLink Text="admin@smartclass.com" Path="mailto:admin@smartclass.com" Style="font-weight: 600; color: var(--primary-light);" />
+                </div>
+            </RadzenColumn>
+        </RadzenRow>
+    </div>
+
+</div>
+
+
+@code {
+    // Внутрішній метод для уникнення помилок компіляції (поки немає реалізації)
+    private async Task OpenTicketDialog()
+    {
+        Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Info, Summary = "Інфо", Detail = "Ця функція знаходиться в розробці." });
+        await Task.CompletedTask;
+    }
+}
