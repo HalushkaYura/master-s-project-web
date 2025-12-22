@@ -1,0 +1,118 @@
+﻿@using SmartClass.Application.Contracts.Classrooms
+@using SmartClass.Application.Abstractions
+@using SmartClass.Web.Services
+@using System.ComponentModel.DataAnnotations
+@using Radzen
+
+@inject IClassroomService ClassroomService
+@inject CurrentUserState CurrentUser
+@inject Radzen.DialogService DialogService
+@inject Radzen.NotificationService Toast
+
+<EditForm Model="@vm" OnValidSubmit="@HandleSubmit">
+    <DataAnnotationsValidator />
+
+    <!-- Вміст форми -->
+    <RadzenStack Gap="1.5rem" Style="padding: 10px 5px;">
+
+        <!-- Заголовок і опис (Для кращого UX) -->
+        <div>
+            <h3 style="color: var(--primary-color); font-weight: 700; font-size: 1.4rem; margin: 0 0 5px 0;">
+                Редагування класу
+            </h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">
+                Змініть назву, секцію або опис вашого навчального простору.
+            </p>
+        </div>
+
+        <!-- Назва -->
+        <div>
+            <label class="form-label">Назва класу *</label>
+            <RadzenTextBox @bind-Value="vm.Title" Name="Title" Style="width:100%;" Placeholder="Напр. '10-А Інформатика'" />
+            <ValidationMessage For="@(() => vm.Title)" />
+        </div>
+
+        <!-- Секція -->
+        <div>
+            <label class="form-label">Секція / Група</label>
+            <RadzenTextBox @bind-Value="vm.Section" Name="Section" Style="width:100%;" Placeholder="Напр. '2024 Весна'" />
+        </div>
+
+        <!-- Опис -->
+        <div>
+            <label class="form-label">Опис</label>
+            <RadzenTextArea @bind-Value="vm.Description" Name="Description" Rows="4" Style="width:100%; resize: vertical;" Placeholder="Коротка інформація про клас..." />
+        </div>
+
+    </RadzenStack>
+
+    <!-- Кнопки дій -->
+    <div class="d-flex justify-content-end align-items-center mt-4 pt-3" style="border-top: 1px solid rgba(0,0,0,0.05);">
+
+        <RadzenButton Text="Скасувати"
+                      ButtonStyle="ButtonStyle.Light"
+                      Variant="Variant.Outlined"
+                      Click="@(() => DialogService.Close(false))"
+                      Disabled="@isBusy"
+                      Style="margin-right: 12px; border-radius: 8px; font-weight: 600; color: var(--text-secondary); border-color: #cbd5e1;" />
+
+        <RadzenButton Text="Зберегти зміни"
+                      Icon="save"
+                      ButtonType="ButtonType.Submit"
+                      Class="btn-primary-custom"
+                      IsBusy="@isBusy"
+                      Style="padding: 8px 20px !important;" />
+    </div>
+</EditForm>
+
+<style>
+    .form-label {
+        font-weight: 600;
+        color: var(--text-main);
+        font-size: 0.9rem;
+        display: block;
+        margin-bottom: 6px;
+        letter-spacing: 0.01em;
+    }
+</style>
+
+@code {
+    [Parameter] public ClassroomDetailsDto Classroom { get; set; } = null!;
+
+    private EditVm vm = new();
+    private bool isBusy = false;
+
+    protected override void OnInitialized()
+    {
+        vm.Title = Classroom.Title;
+        vm.Section = Classroom.Section;
+        vm.Description = Classroom.Description;
+    }
+
+    private async Task HandleSubmit()
+    {
+        isBusy = true;
+        try
+        {
+            var userId = Guid.Parse(CurrentUser.User!.UserId);
+            var dto = new UpdateClassroomDto(Classroom.Id, vm.Title, vm.Section, vm.Description);
+
+            await ClassroomService.UpdateAsync(dto, userId);
+
+            Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Успіх", Detail = "Дані класу оновлено." });
+            DialogService.Close(true);
+        }
+        catch (Exception ex)
+        {
+            Toast.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Помилка", Detail = ex.Message });
+        }
+        finally { isBusy = false; }
+    }
+
+    class EditVm
+    {
+        [Required(ErrorMessage = "Назва обов'язкова")] public string Title { get; set; } = "";
+        public string? Section { get; set; }
+        public string? Description { get; set; }
+    }
+}

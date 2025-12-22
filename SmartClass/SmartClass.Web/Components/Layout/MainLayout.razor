@@ -19,6 +19,132 @@
 @inject INotificationService NotificationAppService  
 @implements IDisposable
 
+<style>
+    .notif-wrapper {
+        position: relative;
+    }
+
+    .notif-badge {
+        position: absolute;
+        top: 2px;
+        right: 4px;
+        background: #ef4444;
+        color: white;
+        border-radius: 999px;
+        padding: 0 6px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        line-height: 1.3;
+        transform: translate(50%, -50%);
+    }
+
+    .notif-panel {
+        position: absolute;
+        top: 110%;
+        right: 0;
+        width: min(360px, 80vw);
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        padding: 8px 0 4px 0;
+        z-index: 2000;
+    }
+
+    .notif-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 12px 8px 16px;
+        border-bottom: 1px solid #e5e7eb;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #0f172a;
+    }
+
+    .notif-empty {
+        padding: 12px;
+        text-align: center;
+        font-size: 0.85rem;
+        color: #6b7280;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .notif-list {
+        max-height: 320px;
+        overflow-y: auto;
+    }
+
+    .notif-item {
+        padding: 8px 14px;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+
+        .notif-item.unread {
+            background: #eff6ff;
+        }
+
+            .notif-item.read:hover,
+            .notif-item.unread:hover {
+                background: #e5e7eb;
+            }
+
+    .notif-item-main {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .notif-item-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #0f172a;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .notif-item-desc {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-top: 2px;
+        max-height: 2.3em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .notif-item-meta {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+        font-size: 0.7rem;
+    }
+
+    .notif-time {
+        color: #9ca3af;
+        white-space: nowrap;
+    }
+
+    .notif-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #2563eb;
+    }
+
+    .notif-footer {
+        border-top: 1px solid #e5e7eb;
+        padding: 6px 10px 4px 10px;
+        display: flex;
+        justify-content: center;
+    }
+</style>
 <AppUserFromLocalStorageInitializer />
 <RadzenComponents />
 
@@ -226,7 +352,6 @@
 
                 <RadzenPanelMenu DisplayStyle="MenuItemDisplayStyle.IconAndText" ShowArrow="true">
                     <RadzenPanelMenuItem Text="Мої класи" Icon="school" Path="classrooms" />
-                    <RadzenPanelMenuItem Text="Повідомлення" Icon="notifications" Path="notifications" />
                     <RadzenPanelMenuItem Text="Профіль" Icon="settings" Path="userInfo" />
 
                     <div style="margin-top: 30px; padding-left: 24px; margin-bottom: 10px;">
@@ -283,132 +408,7 @@
 
 </RadzenLayout>
 
-<style>
-    .notif-wrapper {
-        position: relative;
-    }
 
-    .notif-badge {
-        position: absolute;
-        top: 2px;
-        right: 4px;
-        background: #ef4444;
-        color: white;
-        border-radius: 999px;
-        padding: 0 6px;
-        font-size: 0.65rem;
-        font-weight: 700;
-        line-height: 1.3;
-        transform: translate(50%, -50%);
-    }
-
-    .notif-panel {
-        position: absolute;
-        top: 110%;
-        right: 0;
-        width: min(360px, 80vw);
-        background: #ffffff;
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        padding: 8px 0 4px 0;
-        z-index: 2000;
-    }
-
-    .notif-panel-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 4px 12px 8px 16px;
-        border-bottom: 1px solid #e5e7eb;
-        font-weight: 600;
-        font-size: 0.9rem;
-        color: #0f172a;
-    }
-
-    .notif-empty {
-        padding: 12px;
-        text-align: center;
-        font-size: 0.85rem;
-        color: #6b7280;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-    }
-
-    .notif-list {
-        max-height: 320px;
-        overflow-y: auto;
-    }
-
-    .notif-item {
-        padding: 8px 14px;
-        display: flex;
-        justify-content: space-between;
-        gap: 8px;
-        cursor: pointer;
-        transition: background 0.15s ease;
-    }
-
-    .notif-item.unread {
-        background: #eff6ff;
-    }
-
-    .notif-item.read:hover,
-    .notif-item.unread:hover {
-        background: #e5e7eb;
-    }
-
-    .notif-item-main {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .notif-item-title {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #0f172a;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .notif-item-desc {
-        font-size: 0.8rem;
-        color: #6b7280;
-        margin-top: 2px;
-        max-height: 2.3em;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .notif-item-meta {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 4px;
-        font-size: 0.7rem;
-    }
-
-    .notif-time {
-        color: #9ca3af;
-        white-space: nowrap;
-    }
-
-    .notif-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 999px;
-        background: #2563eb;
-    }
-
-    .notif-footer {
-        border-top: 1px solid #e5e7eb;
-        padding: 6px 10px 4px 10px;
-        display: flex;
-        justify-content: center;
-    }
-</style>
 
 @code {
     private bool sidebarExpanded = true;

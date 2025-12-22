@@ -185,6 +185,39 @@ namespace SmartClass.Infrastructure.Services
                 await NotifyAssignmentPublishedAsync(db, assignment, ct);
             }
         }
+        public async Task UpdateStatusAsync(Guid assignmentId, string newStatus, CancellationToken ct = default)
+        {
+            // 1. Створюємо новий контекст (важливо для Blazor Server)
+            await using var db = await dbFactory.CreateDbContextAsync(ct);
+
+            // 2. Шукаємо завдання
+            var assignment = await db.Assignments
+                .FirstOrDefaultAsync(a => a.Id == assignmentId, ct);
+
+            if (assignment == null)
+            {
+                throw new InvalidOperationException("Завдання не знайдено.");
+            }
+
+            // 3. Перевіряємо, чи це "публікація" (щоб знати, чи відправляти сповіщення)
+            // Логіка: старий статус НЕ "Published", а новий — "Published"
+            bool isJustPublished = !string.Equals(assignment.Status, "Published", StringComparison.OrdinalIgnoreCase)
+                                   && string.Equals(newStatus, "Published", StringComparison.OrdinalIgnoreCase);
+
+            // 4. Оновлюємо статус
+            assignment.Status = newStatus;
+
+            // 5. Зберігаємо зміни
+            await db.SaveChangesAsync(ct);
+
+            // 6. Якщо завдання щойно опублікували — надсилаємо нотифікації студентам
+            if (isJustPublished)
+            {
+                // Передаємо поточний контекст 'db', щоб не створювати новий
+                await NotifyAssignmentPublishedAsync(db, assignment, ct);
+            }
+        }
+
 
         public async Task DeleteAsync(Guid assignmentId, Guid teacherId, CancellationToken ct = default)
         {

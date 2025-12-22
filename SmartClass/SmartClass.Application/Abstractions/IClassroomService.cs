@@ -32,5 +32,15 @@ namespace SmartClass.Application.Abstractions
         Task<ClassroomDetailsDto> GetClassroomByJoinCodeAsync(
     string joinCode,
     CancellationToken ct = default);
+
+        /// <summary>
+        /// Оновлення інформації про клас викладачем.
+        /// </summary>
+        Task UpdateAsync(UpdateClassroomDto dto, Guid ownerId, CancellationToken ct = default);
+
+        /// <summary>
+        /// Видалення класу викладачем.
+        /// </summary>
+        Task DeleteAsync(Guid classroomId, Guid ownerId, CancellationToken ct = default);
     }
 }

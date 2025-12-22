@@ -26,6 +26,8 @@ namespace SmartClass.Web.Services
             {"SubmittedAt", "Надіслано"},
             {"NoDescriptionProvided", "Детальний опис відсутній"},
             {"NoFilesAttached", "Немає прикріплених файлів"},
+            {"AssignmentDescription", "Опис завдання"},
+            {"AssignmentFiles", "Файли до завдання" },
 
             // Статуси завдань (Assignment Status)
             {"Draft", "Чернетка"},

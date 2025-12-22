@@ -1,6 +1,6 @@
-﻿public record UpdateClassroomDto(
+﻿public sealed record UpdateClassroomDto(
+    Guid Id,
     string Title,
     string? Section,
-    string? Description,
-    bool IsArchived
+    string? Description
 );

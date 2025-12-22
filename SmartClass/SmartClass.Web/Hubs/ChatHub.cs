@@ -8,7 +8,7 @@ using System.Security.Claims;
 
 namespace SmartClass.Web.Hubs
 {
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)] // 🔹
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public sealed class ChatHub : Hub<IChatClient>
     {
         private readonly IRepository<ChannelMember> channelMembersRepo;
@@ -21,41 +21,6 @@ namespace SmartClass.Web.Hubs
             this.channelMembersRepo = channelMembersRepo;
             this.messagesRepo = messagesRepo;
         }
-
-        private Guid GetUserId()
-        {
-            var sub =
-                Context.User?.FindFirst("sub") ??
-                Context.User?.FindFirst(ClaimTypes.NameIdentifier);
-
-            if (sub == null || !Guid.TryParse(sub.Value, out var id))
-                throw new HubException("Invalid user id");
-
-            return id;
-        }
-
-        private string GetUserDisplayName()
-            => Context.User?.Identity?.Name ?? "Користувач";
-
-        private static string ChannelGroup(Guid channelId)
-            => $"channel-{channelId:N}";
-
-        public async Task JoinChannel(Guid channelId)
-        {
-            var userId = GetUserId();
-
-            var member = await channelMembersRepo.GetEntityAsync(
-                m => m.ChannelId == channelId && m.UserId == userId);
-
-            if (member == null)
-                throw new HubException("You are not a member of this channel.");
-
-            await Groups.AddToGroupAsync(Context.ConnectionId, ChannelGroup(channelId));
-        }
-
-        public Task LeaveChannel(Guid channelId)
-            => Groups.RemoveFromGroupAsync(Context.ConnectionId, ChannelGroup(channelId));
-
         public async Task SendMessage(Guid channelId, string text)
         {
             if (string.IsNullOrWhiteSpace(text))
@@ -94,5 +59,40 @@ namespace SmartClass.Web.Hubs
             await Clients.Group(ChannelGroup(channelId))
                          .MessageReceived(dto);
         }
+        private Guid GetUserId()
+        {
+            var sub =
+                Context.User?.FindFirst("sub") ??
+                Context.User?.FindFirst(ClaimTypes.NameIdentifier);
+
+            if (sub == null || !Guid.TryParse(sub.Value, out var id))
+                throw new HubException("Invalid user id");
+
+            return id;
+        }
+
+        private string GetUserDisplayName()
+            => Context.User?.Identity?.Name ?? "Користувач";
+
+        private static string ChannelGroup(Guid channelId)
+            => $"channel-{channelId:N}";
+
+        public async Task JoinChannel(Guid channelId)
+        {
+            var userId = GetUserId();
+
+            var member = await channelMembersRepo.GetEntityAsync(
+                m => m.ChannelId == channelId && m.UserId == userId);
+
+            if (member == null)
+                throw new HubException("You are not a member of this channel.");
+
+            await Groups.AddToGroupAsync(Context.ConnectionId, ChannelGroup(channelId));
+        }
+
+        public Task LeaveChannel(Guid channelId)
+            => Groups.RemoveFromGroupAsync(Context.ConnectionId, ChannelGroup(channelId));
+
+
     }
 }

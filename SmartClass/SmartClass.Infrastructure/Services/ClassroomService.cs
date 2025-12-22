@@ -170,7 +170,33 @@ namespace SmartClass.Infrastructure.Services
                     PayloadJson: payload),
                 ct);
         }
+        public async Task UpdateAsync(UpdateClassroomDto dto, Guid ownerId, CancellationToken ct = default)
+        {
+            await using var db = await dbFactory.CreateDbContextAsync(ct);
 
+            var classroom = await db.Classrooms.FirstOrDefaultAsync(c => c.Id == dto.Id, ct);
+
+            if (classroom == null) throw new InvalidOperationException("Клас не знайдено.");
+            if (classroom.OwnerId != ownerId) throw new UnauthorizedAccessException("Тільки власник може редагувати клас.");
+
+            classroom.Title = dto.Title;
+            classroom.Section = dto.Section;
+            classroom.Description = dto.Description;
+
+            await db.SaveChangesAsync(ct);
+        }
+        public async Task DeleteAsync(Guid classroomId, Guid ownerId, CancellationToken ct = default)
+        {
+            await using var db = await dbFactory.CreateDbContextAsync(ct);
+
+            var classroom = await db.Classrooms.FirstOrDefaultAsync(c => c.Id == classroomId, ct);
+
+            if (classroom == null) return; // Вже видалено
+            if (classroom.OwnerId != ownerId) throw new UnauthorizedAccessException("Тільки власник може видалити клас.");
+
+            db.Classrooms.Remove(classroom);
+            await db.SaveChangesAsync(ct);
+        }
         public async Task<IReadOnlyList<MyClassroomDto>> GetMyClassroomsAsync(
             Guid userId,
             CancellationToken ct = default)
@@ -318,5 +344,7 @@ namespace SmartClass.Infrastructure.Services
                 members
             );
         }
+
+
     }
 }

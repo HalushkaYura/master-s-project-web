@@ -16,6 +16,7 @@ namespace SmartClass.Application.Abstractions
 
         Task UpdateAsync(UpdateAssignmentDto dto, Guid teacherId, CancellationToken ct = default);
         Task DeleteAsync(Guid assignmentId, Guid teacherId, CancellationToken ct = default);
+        Task UpdateStatusAsync(Guid assignmentId, string newStatus, CancellationToken ct = default);
 
         Task<FileResourceDto> UploadAttachmentAsync(
       Guid classroomId,
